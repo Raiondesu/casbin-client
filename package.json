@@ -1,0 +1,77 @@
+{
+  "name": "casbin-client",
+  "version": "0.0.0",
+  "description": "Lightweight client for Casbin",
+
+  "author": {
+    "name": "Raiondesu",
+    "url": "https://github.com/raiondesu"
+  },
+  "keywords": ["casbin", "casbin.js", "permissions", "rbac", "abac", "access-control", "access"],
+
+  "sideEffects": false,
+  "type": "module",
+  "types": "src",
+  "module": "dist/index.js",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "coverage-percentage": "^0.0.2"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "module-sync": "./dist/index.js",
+      "import": "./dist/index.js"
+    },
+    "./model": {
+      "types": "./src/model.ts",
+      "module-sync": "./dist/model.js",
+      "import": "./dist/model.js"
+    },
+    "./policy": {
+      "types": "./src/policy.ts",
+      "module-sync": "./dist/policy.js",
+      "import": "./dist/policy.js"
+    },
+    "./parser": {
+      "types": "./src/parser.ts",
+      "module-sync": "./dist/parser.js",
+      "import": "./dist/parser.js"
+    },
+    "./min": {
+      "types": "./src/index.ts",
+      "module-sync": "./dist/min/index.js",
+      "import": "./dist/min/index.js"
+    },
+    "./min/model": {
+      "types": "./src/model.ts",
+      "module-sync": "./dist/min/model.js",
+      "import": "./dist/min/model.js"
+    },
+    "./min/policy": {
+      "types": "./src/policy.ts",
+      "module-sync": "./dist/min/policy.js",
+      "import": "./dist/min/policy.js"
+    },
+    "./min/parser": {
+      "types": "./src/parser.ts",
+      "module-sync": "./dist/min/parser.js",
+      "import": "./dist/min/parser.js"
+    }
+  },
+  "scripts": {
+    "build": "rm -r dist && bun run build-min && bun run build-bundler",
+    "build-min": "bun build ./src/* --minify --outdir dist/min --splitting --entry-naming [dir]/[name].[ext]",
+    "build-bundler": "bun build ./src/* --outdir dist --packages external",
+    "test": "bun test && bun ./scripts/coverage.ts"
+  },
+  "dependencies": {
+    "jse-eval": "^1.5.2"
+  },
+  "patchedDependencies": {
+    "jse-eval@1.5.2": "patches/jse-eval@1.5.2.patch"
+  }
+}
