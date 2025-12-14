@@ -7,7 +7,12 @@ import type { ExpressionParser, Matcher, PolicyEffect } from './types';
 // We're reimplementing a bit of subscript/justin here because it lacks types
 // See https://github.com/dy/subscript/issues/26
 binary('in', 90);
-operator('in', (a, b) => b && (a = compile(a), b = compile(b), (ctx: unknown) => a(ctx) in b(ctx)));
+
+// https://casbin.org/docs/syntax-for-models#special-grammar
+operator('in', (a, b) => b && (a = compile(a), b = compile(b), (ctx: unknown) => {
+  const _b = b(ctx), _a = a(ctx);
+  return Array.isArray(_b) ? _b.includes(_a) : _a in _b;
+}));
 
 // add JS literals
 token('undefined', 20, a => a ? err() : [, undefined])
