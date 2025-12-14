@@ -62,7 +62,7 @@
     "build": "rm -r dist && bun run build-min && bun run build-bundler",
     "build-min": "bun build ./src/* --minify --outdir dist/min --splitting --entry-naming [dir]/[name].[ext]",
     "build-bundler": "bun build ./src/* --outdir dist --packages external",
-    "test": "bun test && bun ./scripts/coverage.ts"
+    "test": "bun test && bun ./scripts/badges.ts"
   },
   "sideEffects": false,
   "type": "module",

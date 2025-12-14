@@ -1,4 +1,6 @@
-# casbin-client
+# casbin-client ![](assets/wip.svg)
+
+![](assets/size-core.svg) ![](assets/size-full.svg) ![](assets/coverage.svg)
 
 > 🚧 WIP
 >
