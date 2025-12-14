@@ -41,7 +41,4 @@ export type ExpressionParser<R extends Matcher | PolicyEffect = Matcher | Policy
   source: string,
   token: string,
   type: 'matchers' | 'policyEffect'
-) => {
-  token: string;
-  compiled: R;
-};
+) => R;

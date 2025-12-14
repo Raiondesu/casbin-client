@@ -6,7 +6,7 @@ export interface ModelParserOptions {
   parseExpression?: ExpressionParser;
 }
 
-export const naiveParser: ExpressionParser = (_, token) => ({ token, compiled: () => true });
+export const naiveParser: ExpressionParser = () => () => true;
 
 export function parseModel(source: string, options?: ModelParserOptions) {
   const {
@@ -39,10 +39,9 @@ export function parseModel(source: string, options?: ModelParserOptions) {
           model.roleDefinition[token] = parseRoles(def);
           break;
         case 'matchers':
-        case 'policyEffect': {
-          const { compiled, token: _token } = parseExpression(def, token, modelKey);
-          model[modelKey][_token] = compiled;
-        } break;
+        case 'policyEffect':
+          model[modelKey][token] = parseExpression(def, token, modelKey);
+          break;
       }
     }
 

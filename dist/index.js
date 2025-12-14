@@ -11,7 +11,7 @@ function createAuthorizer(getPermissions, options = {}) {
     wait: undefined
   };
   const remote = getPermissions();
-  const captureAuth = (permissions) => (state.permissions = permissions, {
+  const captureAuthorizer = (permissions) => (state.permissions = permissions, {
     get permissions() {
       return state.permissions;
     },
@@ -24,19 +24,15 @@ function createAuthorizer(getPermissions, options = {}) {
       }
     })
   });
-  if (state.local instanceof Promise) {
-    return (state.wait = Promise.race([
-      remote,
-      state.local.then(parseFromStorage).catch(() => null)
-    ])).then(captureAuth);
-  }
   if (remote instanceof Promise) {
-    state.permissions = parseFromStorage(state.local);
-    state.wait = remote;
-    return state.wait.then(captureAuth);
+    const updater = remote.then((p) => updatePermissions(() => p));
+    return (state.wait = Promise.race([
+      updater,
+      Promise.resolve(state.local).then(parseFromStorage).catch(() => null).then(() => state.wait = updater)
+    ])).then(captureAuthorizer);
   }
   state.wait = Promise.resolve(remote);
-  return captureAuth(remote);
+  return captureAuthorizer(remote);
   function parseFromStorage(r) {
     return state.permissions = JSON.parse(r ?? "null");
   }

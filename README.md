@@ -15,7 +15,7 @@ It strives to be a more modern and polymorphic alternative to the official [Casb
 | 🏝️ Less external dependencies | ✅ Zero-dependencies version available | 🥀 Mandatory `axios`, `babel`, [`casbin-core`](https://github.com/casbin/casbin-core) |
 | 💻 Ergonomic development experience | ✅ Import and use how you like | 🥀 Use in compliance with assumptions hidden in source code |
 | 🪄 Support for various runtime modes | ✅ Supports both regular (*sync*) and *async* modes | 🥀 Every method is async |
-| 🪶 Lightweight and tree-shakeable | ✅ 1KB↔25KB, take what you need | 🥀 90KB+, no tree-shaking |
+| 🪶 Lightweight and tree-shakeable | ✅ 1KB↔8KB, take what you need | 🥀 90KB+, no tree-shaking |
 | 🔌 Extendable | ✅ Pluginable at every step | 🥀 Depend on implementation details |
 | 🤝 Type-safe | ✅ Use typed policies to enforce type safety | 🥀 Plain strings only |
 | 🌐 Environment-independent | ✅ Works in any modern JS environment | 🥀 CommonJS build only |
@@ -45,7 +45,7 @@ Casbin is amazing for dynamic and polymorphic control of user access. But the of
 - [x] Custom storage or DB providers for caching
 - [x] Simple integration with any network/query client
 - [x] Ability to check user permissions using policies and model matchers
-- [ ] Ability to parse permissions from policies without the baggage of matchers and effects
+- [x] Ability to parse permissions from policies without the baggage of matchers and effects
 - [ ] Generate ambient types from policy csv or permissions json automatically
 - [ ] Integrations for popular frontend frameworks
 - [ ] Reliable error reporting

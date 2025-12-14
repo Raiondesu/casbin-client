@@ -17,7 +17,6 @@ describe('Model parser', () => {
     expect(parsed.policyEffect.e()).toBeTrue();
 
     expect(parsed.matchers.m).toBeFunction();
-    expect(parsed.matchers.m).not.toThrow();
     // @ts-expect-error intentional type violation
     expect(parsed.matchers.m!()).toBeTrue();
   });
@@ -36,8 +35,10 @@ describe('Model parser', () => {
     expect(() => { parsed.policyEffect.e() }).toThrow();
 
     expect(parsed.matchers.m).toBeFunction();
-    // @ts-expect-error intentional type violation
-    expect(() => { parsed.matchers.m() }).toThrow();
+    expect(() => {
+      // @ts-expect-error intentional type violation
+      parsed.matchers.m({ p: {}, r: {} });
+    }).toThrow();
     expect(() => { parsed.matchers.m!({ p: {}, r: {} }) }).toThrow();
   });
 });

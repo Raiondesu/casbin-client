@@ -1,32 +1,19 @@
-import { addBinaryOp, compile } from 'jse-eval';
+// oxlint-disable no-sparse-arrays
+import bake, { binary, compile, operator, token } from 'subscript';
+import { err } from 'subscript/parse';
 
 import type { ExpressionParser, Matcher, PolicyEffect } from './types';
 
-export function parseExpression<R extends Matcher | PolicyEffect>(source: string, token: string): ReturnType<ExpressionParser<R>> {
-  addBinaryOp('in', 1, customIn);
+// We're reimplementing a bit of subscript/justin here because it lacks types
+// See https://github.com/dy/subscript/issues/26
+binary('in', 90);
+operator('in', (a, b) => b && (a = compile(a), b = compile(b), (ctx: unknown) => a(ctx) in b(ctx)));
 
-  return {
-    compiled: compile(source) as unknown as R,
-    token,
-  };
-}
+// add JS literals
+token('undefined', 20, a => a ? err() : [, undefined])
+token('NaN', 20, a => a ? err() : [, NaN])
+token('null', 20, a => a ? err() : [, null])
 
-// see https://github.com/casbin/casbin-core/blob/b7ce2a9e54c34605b827b2f5c673650b52fca376/src/util/util.ts#L214
-// and https://casbin.org/docs/syntax-for-models#special-grammar
-function customIn(a: string | number, b: unknown | Array<unknown>) {
-  if (canInclude(b)) {
-    return b.includes(a);
-  }
-
-  return a in ((b ?? {}) as object);
-}
-
-interface Includes {
-  includes(a: unknown): boolean;
-}
-
-function canInclude(b: unknown): b is Includes {
-  return b instanceof Array
-    || typeof b === 'string'
-    || ('includes' in (b as {}) && typeof (b as Includes).includes === 'function');
+export function parseExpression<R extends Matcher | PolicyEffect>(source: string): ReturnType<ExpressionParser<R>> {
+  return bake(source) as unknown as R;
 }

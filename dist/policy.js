@@ -1,5 +1,5 @@
 // src/model.ts
-var naiveParser = (_, token) => ({ token, compiled: () => true });
+var naiveParser = () => () => true;
 function parseModel(source, options) {
   const {
     parseExpression = naiveParser
@@ -28,10 +28,7 @@ function parseModel(source, options) {
           break;
         case "matchers":
         case "policyEffect":
-          {
-            const { compiled, token: _token } = parseExpression(def, token, modelKey);
-            model[modelKey][_token] = compiled;
-          }
+          model[modelKey][token] = parseExpression(def, token, modelKey);
           break;
       }
     }

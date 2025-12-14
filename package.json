@@ -1,20 +1,14 @@
 {
   "name": "casbin-client",
   "version": "0.0.0",
-  "description": "Lightweight client for Casbin",
-
   "author": {
     "name": "Raiondesu",
     "url": "https://github.com/raiondesu"
   },
-  "keywords": ["casbin", "casbin.js", "permissions", "rbac", "abac", "access-control", "access"],
-
-  "sideEffects": false,
-  "type": "module",
-  "types": "src",
   "module": "dist/index.js",
   "devDependencies": {
     "@types/bun": "latest",
+    "badge-maker": "^5.0.2",
     "coverage-percentage": "^0.0.2"
   },
   "peerDependencies": {
@@ -62,16 +56,18 @@
       "import": "./dist/min/parser.js"
     }
   },
+  "description": "Lightweight client for Casbin",
+  "keywords": ["casbin", "casbin.js", "permissions", "rbac", "abac", "access-control", "access"],
   "scripts": {
     "build": "rm -r dist && bun run build-min && bun run build-bundler",
     "build-min": "bun build ./src/* --minify --outdir dist/min --splitting --entry-naming [dir]/[name].[ext]",
     "build-bundler": "bun build ./src/* --outdir dist --packages external",
     "test": "bun test && bun ./scripts/coverage.ts"
   },
+  "sideEffects": false,
+  "type": "module",
+  "types": "src",
   "dependencies": {
-    "jse-eval": "^1.5.2"
-  },
-  "patchedDependencies": {
-    "jse-eval@1.5.2": "patches/jse-eval@1.5.2.patch"
+    "subscript": "^9.1.0"
   }
 }

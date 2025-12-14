@@ -18,7 +18,7 @@ describe('Policy parser', () => {
 
   test('parses from simple model and filters by subject using a naive matcher', () => {
     // Naive matcher which allows to not parse arbitrary expressions
-    const naiveMatcher: ExpressionParser = (_: string, token: string) => ({ token, compiled: (ctx) => ctx.p.sub === ctx.r.sub });
+    const naiveMatcher: ExpressionParser = () => (ctx) => ctx.p.sub === ctx.r.sub;
 
     const permissions = fromPolicySource(sources.simple, {
       request: ['reader'],
@@ -50,6 +50,7 @@ describe('Policy parser', () => {
       'delete': ['data'],
     });
 
+    // FIXME: somthing is wrong with executing parsed matchers
     // const reader = fromPolicySource(sources.simple, {
     //   request: ['bob'],
     //   parseExpression,
