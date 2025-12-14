@@ -1,11 +1,11 @@
 # casbin-client ![](assets/wip.svg)
 
-![](assets/size-core.svg) ![](assets/size-full.svg) ![](assets/coverage.svg)
+![](assets/version.svg) ![](assets/size-core.svg) ![](assets/size-full.svg) ![](assets/coverage.svg)
 
 > 🚧 WIP
 >
 > For now, this library only implements the most essential sub-set of Casbin.js features, but it [will be expanded later](#roadmap--todo-list).
-> Some features may not work as expected
+> Some features may not work as expected.
 
 `casbin-client` is a frontend library for [**Casbin**](https://casbin.org), which facilitates manipulation, management, and storage of user permissions in a frontend application.
 
@@ -26,7 +26,7 @@ It strives to be a more modern and polymorphic alternative to the official [Casb
 
 # Install
 
-Due to extremely early WIP status of this package, installation is only awailable from github for now:
+Due to extremely early WIP status of this package, installation is only available from github for now:
 ```bash
 npm i github:raiondesu/casbin-client
 # or
@@ -95,11 +95,7 @@ bun run build
 bun test
 ```
 
-### Updating coverage badge
-
-> Prerequisites:
-> - [`coverage-badge`](https://github.com/ozankasikci/rust-test-coverage-badge):\
->   `cargo install coverage-badge`
+### With updating badges
 
 ```bash
 bun run test
