@@ -20,21 +20,21 @@ describe('Policy parser', () => {
     // Naive matcher which allows to not parse arbitrary expressions
     const naiveMatcher: ExpressionParser = () => (ctx) => ctx.p.sub === ctx.r.sub;
 
-    const permissions = fromPolicySource(sources.simple, {
-      request: ['reader'],
+    const reader = fromPolicySource(sources.simple, {
+      request: ['r', 'reader'],
       parseExpression: naiveMatcher,
     });
 
-    expect(permissions).toEqual({
+    expect(reader).toEqual({
       'read': ['data'],
     });
 
-    const permissions2 = fromPolicySource(sources.simple, {
-      request: ['writer'],
+    const writer = fromPolicySource(sources.simple, {
+      request: ['r', 'writer'],
       parseExpression: naiveMatcher,
     });
 
-    expect(permissions2).toEqual({
+    expect(writer).toEqual({
       'write': ['data'],
     });
   });
@@ -50,24 +50,23 @@ describe('Policy parser', () => {
       'delete': ['data'],
     });
 
-    // FIXME: somthing is wrong with executing parsed matchers
-    // const reader = fromPolicySource(sources.simple, {
-    //   request: ['bob'],
-    //   parseExpression,
-    // });
+    const reader = fromPolicySource(sources.simple, {
+      request: ['r', 'bob'],
+      parseExpression,
+    });
 
-    // expect(reader).toEqual({
-    //   'read': ['data'],
-    // });
+    expect(reader).toEqual({
+      'read': ['data'],
+    });
 
-    // const writer = fromPolicySource(sources.simple, {
-    //   request: ['alice'],
-    //   parseExpression,
-    // });
+    const writer = fromPolicySource(sources.simple, {
+      request: ['r', 'alice'],
+      parseExpression,
+    });
 
-    // expect(writer).toEqual({
-    //   'read': ['data'],
-    //   'write': ['data'],
-    // });
+    expect(writer).toEqual({
+      'read': ['data'],
+      'write': ['data'],
+    });
   });
 });

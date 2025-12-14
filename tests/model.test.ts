@@ -8,9 +8,9 @@ describe('Model parser', () => {
   test('Parses a simple model with a naive parser', () => {
     const parsed = parseModel(sources.simple.m);
 
-    expect(parsed.requestDefinition).toEqual(['sub', 'obj', 'act']);
-    expect(parsed.policyDefinition).toEqual(['sub', 'obj', 'act']);
-    expect(parsed.roleDefinition).toEqual({ g: 2 });
+    expect(parsed.requestDefinition.r).toEqual(['sub', 'obj', 'act']);
+    expect(parsed.policyDefinition.p).toEqual(['sub', 'obj', 'act']);
+    expect(parsed.roleDefinition).toEqual({ g: ['_', '_'] });
 
     expect(parsed.policyEffect.e).toBeFunction();
     // @ts-expect-error intentional type violation
@@ -26,19 +26,20 @@ describe('Model parser', () => {
       parseExpression
     });
 
-    expect(parsed.requestDefinition).toEqual(['sub', 'obj', 'act']);
-    expect(parsed.policyDefinition).toEqual(['sub', 'obj', 'act']);
-    expect(parsed.roleDefinition).toEqual({ g: 2 });
-
-    expect(parsed.policyEffect.e).toBeFunction();
-    // @ts-expect-error intentional type violation
-    expect(() => { parsed.policyEffect.e() }).toThrow();
+    expect(parsed.requestDefinition.r).toEqual(['sub', 'obj', 'act']);
+    expect(parsed.policyDefinition.p).toEqual(['sub', 'obj', 'act']);
+    expect(parsed.roleDefinition).toEqual({ g: ['_', '_'] });
 
     expect(parsed.matchers.m).toBeFunction();
     expect(() => {
-      // @ts-expect-error intentional type violation
-      parsed.matchers.m({ p: {}, r: {} });
+    // @ts-expect-error intentional type violation
+      return parsed.matchers.m();
     }).toThrow();
-    expect(() => { parsed.matchers.m!({ p: {}, r: {} }) }).toThrow();
+
+    expect(parsed.policyEffect.e).toBeFunction();
+    expect(() => {
+      // @ts-expect-error intentional type violation
+      return parsed.policyEffect.e();
+    }).toThrow();
   });
 });

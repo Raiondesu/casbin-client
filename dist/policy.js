@@ -1,102 +1,78 @@
-// src/model.ts
-var naiveParser = () => () => true;
-function parseModel(source, options) {
-  const {
-    parseExpression = naiveParser
-  } = options ?? {};
-  const structure = parseStructure(source);
-  const model = {
-    requestDefinition: [],
-    policyDefinition: [],
-    roleDefinition: {},
-    policyEffect: {},
-    matchers: {}
-  };
-  for (const [section, statements] of Object.entries(structure))
-    for (const statement of statements) {
-      const [token, def] = statement.split(/=(.*)/).map((s) => s.trim());
-      if (!token || !def)
-        continue;
-      const modelKey = section;
-      switch (modelKey) {
-        case "requestDefinition":
-        case "policyDefinition":
-          model[modelKey] = parseByComma(def);
-          break;
-        case "roleDefinition":
-          model.roleDefinition[token] = parseRoles(def);
-          break;
-        case "matchers":
-        case "policyEffect":
-          model[modelKey][token] = parseExpression(def, token, modelKey);
-          break;
-      }
-    }
-  return model;
-}
-function parseByComma(def) {
-  return def.split(/,\s*/);
-}
-function parseRoles(def) {
-  return def.split(/,\s*/).length;
-}
-var sectionRegExp = /(?<type>[\w_]+)\](?<expr>[^[]+)/g;
-function parseStructure(source) {
-  const groups = source.matchAll(sectionRegExp);
-  const ir = {};
-  for (const group of groups) {
-    const { type, expr } = group.groups ?? {};
-    if (!type || !expr)
-      continue;
-    ir[toCamelCaseSimple(type)] = expr.split(`
-`).map((s) => s.trim()).filter((s) => !!s);
-  }
-  return ir;
-}
-function toCamelCaseSimple(snakeStr) {
-  return snakeStr.replace(/_([a-z])/g, (_, $1) => $1.toUpperCase());
-}
+import {
+  parseModel
+} from "./model.js";
 
 // src/policy.ts
+var defaultPermissionModel = ["act", "obj"];
 function fromPolicySource(source, options) {
-  const { request, parseExpression } = options ?? {};
+  const {
+    request,
+    parseExpression,
+    permissionModel = defaultPermissionModel
+  } = options ?? {};
   const model = parseModel(source.m, { parseExpression });
-  return fromCustomModel(model, source, { request });
+  return fromCustomModel(model, source, { request, permissionModel });
 }
 function fromCustomModel(model, source, options) {
-  const { request: presetRequest } = options ?? {};
-  const matchers = Object.values(model.matchers);
-  const policies = source.p.map(([, ...policy]) => Object.fromEntries(policy.map((value, i) => [model.policyDefinition[i], value])));
-  const groups = source.g?.reduce((acc, [g, ...vals]) => ({
-    ...acc,
-    [g]: (...args) => args.every((a, i) => a === vals[i])
-  }), {});
-  return policies.reduce((acc, policy) => {
-    const key = policy[model.policyDefinition[2]];
-    const value = acc[key] ?? [];
-    const nextValue = policy[model.policyDefinition[1]];
-    const others = model.policyDefinition.slice(3).map((d) => policy[d]);
+  const {
+    request: presetRequest,
+    permissionModel = defaultPermissionModel
+  } = options ?? {};
+  const [requestGroup, ...request] = presetRequest ?? ["r"];
+  const requestType = getSectionType(requestGroup);
+  const groups = createRoleContext(model.roleDefinition, source.g);
+  const matcher = model.matchers[`m${requestType === 1 ? "" : requestType}`];
+  return source.p.reduce((perms, [policyGroup, ...policy]) => {
+    const policyType = getSectionType(policyGroup);
+    if (requestType !== policyType)
+      return perms;
+    const def = model.policyDefinition[policyGroup];
+    const policyContext = toModelContext(def, policy);
+    const [key, nextValue] = permissionModel.map((key2) => policyContext[key2]);
+    const previous = perms[key] ?? [];
     const result = () => ({
-      ...acc,
-      [key]: [...value, nextValue, ...others]
+      ...perms,
+      [key]: [...previous, nextValue]
     });
-    if (!presetRequest) {
+    if (!presetRequest)
       return result();
-    }
-    const request = [
-      presetRequest[0],
-      nextValue,
-      key,
-      ...others
-    ].reduce((acc2, item, i) => ({
-      ...acc2,
-      [model.requestDefinition[i]]: presetRequest[i] ?? item
-    }), {});
-    const context = { ...groups, p: policy, r: request };
-    return matchers.every((m) => m(context)) ? result() : acc;
+    const requestContext = toModelContext(def, request, policyContext);
+    const context = {
+      [requestGroup]: requestContext,
+      [policyGroup]: policyContext,
+      ...groups,
+      ...model.matchers,
+      ...model.policyEffect
+    };
+    return matcher(context) ? result() : perms;
+  }, {});
+}
+function getSectionType(group) {
+  return Number(group.slice(1) || "1");
+}
+function toModelContext(def, policy, fallback) {
+  return def.reduce((ctx, prop, i) => ({
+    ...ctx,
+    [prop]: policy[i] ?? fallback?.[prop]
+  }), {});
+}
+function createRoleContext(roleModel, roleGroups) {
+  const vals = {};
+  return roleGroups?.reduce((acc, [g, ..._vals]) => {
+    vals[g] ??= [];
+    vals[g].push(_vals);
+    return {
+      ...acc,
+      [g]: (...args) => {
+        return vals[g].some((val) => args.every((a, i) => val[i] === a));
+      }
+    };
   }, {});
 }
 export {
+  toModelContext,
   fromPolicySource,
-  fromCustomModel
+  fromCustomModel,
+  defaultPermissionModel,
+  createRoleContext
 };

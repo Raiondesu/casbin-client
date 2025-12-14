@@ -32,7 +32,7 @@ describe('Authorizer', () => {
       Object.entries(permissions.simple)
         .map(([user, perm]) => [
           user,
-          createAuthorizer(() => perm)
+          createAuthorizer(perm)
         ], [])
     ) as { [key in keyof typeof permissions['simple']]: Authorizer<typeof permissions['simple'][key]> };
 
@@ -46,7 +46,7 @@ describe('Authorizer', () => {
         Object.entries(permissions.simple)
           .map(async ([user, perm]) => [
             user,
-            await createAuthorizer(() => Promise.resolve(perm))
+            await createAuthorizer(Promise.resolve(perm))
           ], [])
       )
     ) as { [key in keyof typeof permissions['simple']]: Authorizer<typeof permissions['simple'][key]> };

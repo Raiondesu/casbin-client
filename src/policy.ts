@@ -1,5 +1,5 @@
 import { parseModel, type ModelParserOptions, type ModelContext } from "./model";
-import type { Model, Permissions } from "./types";
+import type { DefinitionKey, Model, ModelRecord, Permissions, PolicyDefinition, RoleContext, RoleDefinitions } from "./types";
 
 export interface PolicySource {
   m: string;
@@ -8,17 +8,23 @@ export interface PolicySource {
 }
 
 export interface PolicyParserOptions {
-  request?: string[];
+  request?: [DefinitionKey<'r'>, ...string[]];
+  permissionModel?: string[];
 }
+
+export const defaultPermissionModel = ['act', 'obj'];
 
 export function fromPolicySource<P extends Permissions>(
   source: PolicySource,
   options?: PolicyParserOptions & ModelParserOptions
 ): P {
-  const { request, parseExpression } = options ?? {};
+  const {
+    request, parseExpression,
+    permissionModel = defaultPermissionModel
+  } = options ?? {};
   const model = parseModel(source.m, { parseExpression });
 
-  return fromCustomModel<P>(model, source, { request });
+  return fromCustomModel<P>(model, source, { request, permissionModel });
 }
 
 export function fromCustomModel<P extends Permissions>(
@@ -26,51 +32,76 @@ export function fromCustomModel<P extends Permissions>(
   source: Omit<PolicySource, 'm'>,
   options?: PolicyParserOptions
 ) {
-  const { request: presetRequest } = options ?? {};
+  const {
+    request: presetRequest,
+    permissionModel = defaultPermissionModel
+  } = options ?? {};
+  const [requestGroup, ...request] = presetRequest ?? ['r'];
+  const requestType = getSectionType(requestGroup);
 
-  const matchers = Object.values(model.matchers);
+  const groups = createRoleContext(model.roleDefinition, source.g);
+  const matcher = model.matchers[`m${requestType === 1 ? '' : requestType}`];
 
-  const policies = source.p.map<Record<string, string>>(([, ...policy]) => (
-    Object.fromEntries(policy.map((value, i) => [model.policyDefinition[i], value]))
-  ));
+  return source.p.reduce(
+    (perms, [policyGroup, ...policy]) => {
+      const policyType = getSectionType(policyGroup);
 
-  const groups = source.g?.reduce((acc, [g, ...vals]) => ({
-    ...acc,
-    [g!]: (...args: string[]) => args.every((a, i) => a === vals[i]),
-  }), {} as Record<string, (...args: string[]) => boolean>);
+      if (requestType !== policyType) return perms;
 
-  return policies.reduce(
-    (acc, policy) => {
-      const key = policy[model.policyDefinition[2]!]!;
-      const value = acc[key] ?? [];
-      const nextValue = policy[model.policyDefinition[1]!]!;
-      const others = model.policyDefinition.slice(3).map(d => policy[d]);
+      const def = model.policyDefinition[policyGroup as DefinitionKey<'p'>]!;
+      const policyContext = toModelContext(def, policy);
 
+      const [key, nextValue] = permissionModel.map(key => policyContext[key]);
+
+      const previous = perms[key] ?? [];
       const result = () => ({
-        ...acc,
-        [key]: [...value, nextValue, ...others],
+        ...perms,
+        [key]: [...previous, nextValue],
       });
 
-      if (!presetRequest) {
-        return result();
-      }
+      if (!presetRequest) return result();
 
-      const request = [
-        presetRequest[0],
-        nextValue,
-        key,
-        ...others
-      ].reduce((acc, item, i) => ({
-        ...acc,
-        [model.requestDefinition[i]!]: presetRequest[i] ?? item,
-      }), {});
+      const requestContext = toModelContext(def, request, policyContext);
 
-      const context = { ...groups, p: policy, r: request } as ModelContext;
+      const context = {
+        [requestGroup]: requestContext,
+        [policyGroup]: policyContext,
+        ...groups,
+        ...model.matchers,
+        ...model.policyEffect
+      } as ModelContext;
 
-      return matchers.every(m => m(context))
+      return matcher(context)
         ? result()
-        : acc;
+        : perms;
     },
     {} as P
   );
+}
+
+function getSectionType(group: string) {
+  return Number(group.slice(1) || '1');
+}
+
+export function toModelContext(def: PolicyDefinition, policy: string[], fallback?: ModelRecord) {
+  return def.reduce((ctx, prop, i) => ({
+    ...ctx,
+    [prop]: policy[i] ?? fallback?.[prop],
+  }), {} as ModelRecord);
+}
+
+export function createRoleContext(roleModel: RoleDefinitions, roleGroups?: string[][]) {
+  const vals: Record<string, string[][]> = {};
+
+  return roleGroups?.reduce((acc, [g, ..._vals]) => {
+    vals[g] ??= [];
+    vals[g].push(_vals);
+
+    return {
+      ...acc,
+      [g as DefinitionKey<'g'>]: (...args: string[]) => {
+        return vals[g].some(val => args.every((a, i) => val[i] === a));
+      },
+    };
+  }, {} as RoleContext);
 }

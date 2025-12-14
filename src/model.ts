@@ -1,6 +1,6 @@
-import type { ExpressionParser, Matcher, Model, ModelContext, ModelEffect, ModelRecord, PolicyDefinition, PolicyEffect, RequestDefinition, RoleDefinition, RoleGroups } from "./types";
+import type { DefinitionKey, ExpressionParser, Matcher, Model, ModelContext, ModelEffect, ModelRecord, PolicyDefinition, PolicyEffect, RequestDefinition, RoleDefinition } from "./types";
 
-export type { Matcher, Model, PolicyEffect, PolicyDefinition, RequestDefinition, ModelContext, ModelEffect, ModelRecord, RoleDefinition, RoleGroups };
+export type { Matcher, Model, PolicyEffect, PolicyDefinition, RequestDefinition, ModelContext, ModelEffect, ModelRecord, RoleDefinition, DefinitionKey };
 
 export interface ModelParserOptions {
   parseExpression?: ExpressionParser;
@@ -12,74 +12,61 @@ export function parseModel(source: string, options?: ModelParserOptions) {
   const {
     parseExpression = naiveParser,
   } = options ?? {};
-  const structure = parseStructure(source);
 
-  const model: Model = {
-    requestDefinition: [],
-    policyDefinition: [],
+  const model = {
+    requestDefinition: {},
+    policyDefinition: {},
     roleDefinition: {},
     policyEffect: {},
     matchers: {},
-  };
+  } as Model;
 
-  for (const [section, statements] of Object.entries(structure))
+  for (const [section, statements] of parseStructure(source))
     for (const statement of statements) {
-      const [token, def] = statement.split(/=(.*)/).map(s => s.trim());
+  const [token, def] = statement.split(eq).map(s => s.trim()) as [keyof Model, string];
 
-      if (!token || !def) continue;
+  if (!token || !def) continue;
 
-      const modelKey = section as keyof ModelIR;
-
-      switch (modelKey) {
-        case 'requestDefinition':
-        case 'policyDefinition':
-          model[modelKey] = parseByComma(def);
-          break;
-        case 'roleDefinition':
-          model.roleDefinition[token] = parseRoles(def);
-          break;
-        case 'matchers':
-        case 'policyEffect':
-          model[modelKey][token] = parseExpression(def, token, modelKey);
-          break;
-      }
+  switch (section) {
+    case 'matchers':
+    case 'policyEffect':
+      (model[section] as Record<string, PolicyEffect>)
+        [token] = parseExpression(def, token, section);
+      break;
+    default:
+      (model[section] as Record<string, PolicyDefinition>)
+        [token] = def.split(comma);
+      break;
     }
+  }
 
   return model;
 }
 
-function parseByComma(def: string): RequestDefinition {
-  return def.split(/,\s*/);
-}
+const eq = /=(.*)/;
+const comma = /,\s*/;
+const sectionRegExp = /(?<type>[\w_]+)\]\n(?<expr>[^[]+)/g;
 
-function parseRoles(def: string): number {
-  return def.split(/,\s*/).length;
-}
-
-const sectionRegExp = /(?<type>[\w_]+)\](?<expr>[^[]+)/g;
-
-function parseStructure(source: string) {
+function* parseStructure(source: string): Generator<ModelIR> {
   const groups = source.matchAll(sectionRegExp);
-  const ir = {} as ModelIR;
 
   for (const group of groups) {
     const { type, expr } = group.groups ?? {};
 
     if (!type || !expr) continue;
 
-    ir[toCamelCaseSimple(type) as keyof Model] = expr
-      .split('\n')
-      .map(s => s.trim())
-      .filter(s => !!s);
+    yield [
+      toCamelCaseSimple(type) as keyof Model,
+      expr
+        .split('\n')
+        .map(s => s.trim())
+        .filter(s => !!s)
+    ];
   }
-
-  return ir;
 }
 
 function toCamelCaseSimple(snakeStr: string) {
   return snakeStr.replace(/_([a-z])/g, (_, $1) => $1.toUpperCase());
 }
 
-type ModelIR = {
-  [key in keyof Model]: string[];
-}
+type ModelIR = [keyof Model, string[]];

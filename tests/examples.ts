@@ -21,7 +21,7 @@ g = _, _
 e = some(where (p.eft == allow))
 
 [matchers]
-m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act`,
+m = r.obj == p.obj && r.act == p.act && "sub" in r && g(r.sub, p.sub)`,
     "p": [
       ["p", "reader", "data", "read"],
       ["p", "writer", "data", "write"],

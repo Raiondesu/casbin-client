@@ -19,7 +19,7 @@ It strives to be a more modern and polymorphic alternative to the official [Casb
 | 🪄 Support for various runtime modes | ✅ Supports both regular (*sync*) and *async* modes | 🥀 Every method is async |
 | 🪶 Lightweight and tree-shakeable | ✅ 1KB↔8KB, take what you need | 🥀 90KB+, no tree-shaking |
 | 🔌 Extendable | ✅ Pluginable at every step | 🥀 Depend on implementation details |
-| 🤝 Type-safe | ✅ Use typed policies to enforce type safety | 🥀 Plain strings only |
+| 🤝 Type-safe | ✅ Use typed policies to enforce type safety | 🥀 Untyped strings only |
 | 🌐 Environment-independent | ✅ Works in any modern JS environment | 🥀 CommonJS build only |
 | ⚙️ Reliability | ✅ ![](assets/coverage.svg) | 🥀 No tests... |
 | 🔃 More to come... |  |  |
@@ -48,7 +48,7 @@ Casbin is amazing for dynamic and polymorphic control of user access. But the of
 - [x] Simple integration with any network/query client
 - [x] Ability to check user permissions using policies and model matchers
 - [x] Ability to parse permissions from policies without the baggage of matchers and effects
-- [ ] Generate ambient types from policy csv or permissions json automatically
+- [ ] Generate ambient types from policy csv or permissions json
 - [ ] Integrations for popular frontend frameworks
 - [ ] Reliable error reporting
 - [ ] Support for complex pattern-matching (`/data/*`, `keyMatch(...)`)
@@ -90,12 +90,6 @@ bun run build
 ```
 
 ## Test
-
-```bash
-bun test
-```
-
-### With updating badges
 
 ```bash
 bun run test

@@ -4,54 +4,45 @@ function parseModel(source, options) {
   const {
     parseExpression = naiveParser
   } = options ?? {};
-  const structure = parseStructure(source);
   const model = {
-    requestDefinition: [],
-    policyDefinition: [],
+    requestDefinition: {},
+    policyDefinition: {},
     roleDefinition: {},
     policyEffect: {},
     matchers: {}
   };
-  for (const [section, statements] of Object.entries(structure))
+  for (const [section, statements] of parseStructure(source))
     for (const statement of statements) {
-      const [token, def] = statement.split(/=(.*)/).map((s) => s.trim());
+      const [token, def] = statement.split(eq).map((s) => s.trim());
       if (!token || !def)
         continue;
-      const modelKey = section;
-      switch (modelKey) {
-        case "requestDefinition":
-        case "policyDefinition":
-          model[modelKey] = parseByComma(def);
-          break;
-        case "roleDefinition":
-          model.roleDefinition[token] = parseRoles(def);
-          break;
+      switch (section) {
         case "matchers":
         case "policyEffect":
-          model[modelKey][token] = parseExpression(def, token, modelKey);
+          model[section][token] = parseExpression(def, token, section);
+          break;
+        default:
+          model[section][token] = def.split(comma);
           break;
       }
     }
   return model;
 }
-function parseByComma(def) {
-  return def.split(/,\s*/);
-}
-function parseRoles(def) {
-  return def.split(/,\s*/).length;
-}
-var sectionRegExp = /(?<type>[\w_]+)\](?<expr>[^[]+)/g;
-function parseStructure(source) {
+var eq = /=(.*)/;
+var comma = /,\s*/;
+var sectionRegExp = /(?<type>[\w_]+)\]\n(?<expr>[^[]+)/g;
+function* parseStructure(source) {
   const groups = source.matchAll(sectionRegExp);
-  const ir = {};
   for (const group of groups) {
     const { type, expr } = group.groups ?? {};
     if (!type || !expr)
       continue;
-    ir[toCamelCaseSimple(type)] = expr.split(`
-`).map((s) => s.trim()).filter((s) => !!s);
+    yield [
+      toCamelCaseSimple(type),
+      expr.split(`
+`).map((s) => s.trim()).filter((s) => !!s)
+    ];
   }
-  return ir;
 }
 function toCamelCaseSimple(snakeStr) {
   return snakeStr.replace(/_([a-z])/g, (_, $1) => $1.toUpperCase());
@@ -60,3 +51,4 @@ export {
   parseModel,
   naiveParser
 };
+

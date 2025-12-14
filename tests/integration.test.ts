@@ -7,7 +7,7 @@ import { sources } from './examples';
 
 test('All work in unison', async () => {
   type P = Permissions<'read' | 'write' | 'delete', 'data'>;
-  const auth = createAuthorizer(() => fromPolicySource<P>(sources.simple, { parseExpression }));
+  const auth = createAuthorizer(fromPolicySource<P>(sources.simple, { parseExpression }));
 
   expectTypeOf(auth).toEqualTypeOf<SyncAuthorizer<P>>();
 

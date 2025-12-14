@@ -11,17 +11,17 @@ export interface AuthorizerOptions<P extends Permissions> extends AuthorizerAsyn
 }
 
 export function createAuthorizer<const P extends Permissions>(
-  getPermissions: () => Promise<P>,
+  permissions: Promise<P>,
   options?: AuthorizerAsyncOptions<P>,
 ): Promise<Authorizer<P>>;
 
 export function createAuthorizer<const P extends Permissions>(
-  getPermissions: () => P,
+  permissions: P,
   options?: AuthorizerOptions<P>,
 ): SyncAuthorizer<P>;
 
 export function createAuthorizer<const P extends Permissions>(
-  getPermissions: () => P | Promise<P>,
+  remote: P | Promise<P>,
   options: AuthorizerOptions<P> | AuthorizerAsyncOptions<P> = {},
 ): Authorizer<P> | Promise<Authorizer<P>> {
   const {
@@ -33,46 +33,37 @@ export function createAuthorizer<const P extends Permissions>(
   const state = {
     permissions: null as P | null,
     local: store.getItem?.(key),
-    wait: undefined as Promise<P> | undefined,
   };
 
-  const remote = getPermissions();
+  const captureAuthorizer = (permissions: P) => ({
+    get permissions(): P | null { return permissions },
 
-  const captureAuthorizer = (permissions: P) => (state.permissions = permissions, {
-    get permissions(): P | null { return state.permissions },
-
-    updatePermissions: () => state.wait = updatePermissions(getPermissions),
-
-    can: new Proxy(can, {
+    can: new Proxy(can.bind(null, permissions), {
       get(target, p) {
         if (p in target) return target[p as keyof typeof target];
 
-        return can.bind(null, p as keyof P & string);
+        return can.bind(null, permissions, p as keyof P & string);
       },
     }),
   } as Authorizer<P>);
 
   if (remote instanceof Promise) {
-    const updater = remote.then(p => updatePermissions(() => p));
+    const updater = remote.then(updatePermissions);
 
-    return (state.wait = Promise.race([
+    return (Promise.race([
       updater,
       Promise.resolve(state.local)
-        .then(parseFromStorage)
+        .then(r => JSON.parse(r ?? 'null'))
         .catch(() => null)
-        .then(() => state.wait = updater)
+        .then(() => updater)
     ])).then(captureAuthorizer);
   }
 
-  state.wait = Promise.resolve(remote);
+  Promise.resolve(remote);
   return captureAuthorizer(remote);
 
-  function parseFromStorage(r: string | null): any {
-    return state.permissions = JSON.parse(r ?? 'null');
-  }
-
-  async function updatePermissions(pending: () => Promise<P> | P) {
-    const result = state.permissions = await pending();
+  async function updatePermissions(pending: Promise<P> | P) {
+    const result = await pending;
 
     try {
       await store.setItem?.(key, JSON.stringify(result));
@@ -82,15 +73,16 @@ export function createAuthorizer<const P extends Permissions>(
   }
 
   function can<A extends keyof P & string, O extends P[A][number] & string>(
+    permissions: P | null,
     action: A | A[],
     object: O | O[]
   ): boolean {
     return Array.isArray(action)
-      ? action.every(a => can(a, object))
+      ? action.every(a => can(permissions, a, object))
       : Array.isArray(object)
-        ? object.every(o => can(action, o))
+        ? object.every(o => can(permissions, action, o))
         : (
-          state.permissions?.[action]?.includes(object)
+          permissions?.[action]?.includes(object)
           ?? fallback(action, object)
         );
   }
@@ -106,7 +98,6 @@ export type AsyncStorage = {
 
 export interface Authorizer<P extends Permissions> {
   readonly permissions: P | null;
-  updatePermissions(): Promise<P>;
 
   can: Can<P, boolean> & {
     [A in keyof P & string]: CanActOn<A, P>;
