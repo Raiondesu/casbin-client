@@ -1,0 +1,1 @@
+function D(x,A){let{fallback:B=()=>!1}=A??{};return function w(d,q){return Array.isArray(d)?d.every((v)=>w(v,q)):Array.isArray(q)?q.every((v)=>w(d,v)):x()?.[d]?.includes(q)??B(d,q)}}export{D as authorizer};

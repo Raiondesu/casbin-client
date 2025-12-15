@@ -1,5 +1,6 @@
+import type { Permissions } from "./core";
 import { parseModel, type ModelParserOptions, type ModelContext } from "./model";
-import type { DefinitionKey, Model, ModelRecord, Permissions, PolicyDefinition, RoleContext, RoleDefinitions } from "./types";
+import type { DefinitionKey, Model, ModelRecord, PolicyDefinition, RoleContext, RoleDefinitions } from "./types";
 
 export interface PolicySource {
   m: string;

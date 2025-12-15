@@ -50,7 +50,7 @@ try {
 
     const size = formatBytes(gzipSync(contents).byteLength);
     const sizeCore = formatBytes(gzipSync(
-      await minified.outputs.find(o => o.path.endsWith('index.js'))!
+      await minified.outputs.find(o => o.path.endsWith('core.js'))!
         .text()
         .catch(() => '')
     ).byteLength);
@@ -81,6 +81,12 @@ try {
 await writeFile('dist/model.js', String(
   await readFile('dist/model.js')
 ).replace('export { parseModel };\n', ''));
+await writeFile('dist/core.js', String(
+  await readFile('dist/core.js')
+).replace('export { authorizer };\n', ''));
+await writeFile('dist/min/core.js', String(
+  await readFile('dist/min/core.js')
+).replace(/export{\w as a};\n/, ''));
 
 async function postProcess(result: Bun.BuildOutput, type: string) {
   if (result.success) {

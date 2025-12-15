@@ -1,4 +1,4 @@
-# casbin-client [![](assets/wip.svg)]()
+# casbin-client [![](assets/wip.svg)](https://github.com/Raiondesu/casbin-client)
 
 [![](assets/version.svg)](https://www.npmjs.com/package/casbin-client) ![](assets/size-core.svg) ![](assets/size-full.svg) ![](assets/coverage.svg)
 
@@ -6,13 +6,42 @@
 
 It is primarily a library for [**Casbin**](https://casbin.org) and strives to be a more modern and polymorphic alternative to the official [Casbin.js](https://github.com/casbin/casbin.js) client library; it is a complete rewrite from the ground up, sharing zero code with its predecessor. It can and will work without any dependencies, however, so having any knowledge of Casbin is entierly optional.
 
+<details>
+<summary>
+Due to highly modular structure, both complexity and size requirements can grow dynamically as needed.
+</summary>
+
+```ts
+// simple
+const user = { can: authorizer(() => permissions) };
+
+user.can('read', 'data');
+
+// with caching
+const user = createAuthorizer(() => permissions, { store: sessionStorage });
+// and/or promises
+const user = createAuthorizer(Promise.resolve(permissions), { store: sessionStorage });
+
+user.can('read', 'data');
+
+// with full casbin model and policy parsing
+const user = createAuthorizer(() => (
+  fromPolicySource(policy, { parseExpression })
+), { store: sessionStorage });
+
+user.can('read', 'data');
+```
+
+</details>
+
+
 | Feature | `casbin-client` | `casbin.js` |
 |---------|-----------------|-------------|
 | 🌟 Modern tech-stack and dev practices | ✅ TypeScript, DI, FP | 🥀 Babel, OOP |
 | 🏝️ Less external dependencies | ✅ Zero-dependencies version available | 🥀 Mandatory `axios`, `babel`, [`casbin-core`](https://github.com/casbin/casbin-core) |
 | 💻 Ergonomic development experience | ✅ Import and use how you like | 🥀 Use in compliance with assumptions hidden in source code |
 | 🪄 Support for various runtime modes | ✅ Supports both regular (*sync*) and *async* modes | 🥀 Every method is async |
-| 🪶 Lightweight and tree-shakeable | ✅ 1KB↔8KB, take what you need | 🥀 90KB+, no tree-shaking |
+| 🪶 Lightweight and tree-shakeable | ✅ 0.5KB↔8KB, take what you need | 🥀 90KB+, no tree-shaking |
 | 🔌 Extendable | ✅ Pluginable at every step | 🥀 Depend on implementation details |
 | 🤝 Type-safe | ✅ Use [typed policies](#typing) to enforce type safety | 🥀 Untyped strings only |
 | 🌐 Environment-independent | ✅ Works in any modern JS environment | 🥀 CommonJS build only |
@@ -40,7 +69,7 @@ const permissions = {
   read: ['data']
 };
 
-const user = createAuthorizer(() => permissions);
+const user.can = createAuthorizer(() => permissions);
 
 if (user.can('read', 'data')) {
   console.log('Yay, we can read data!');
@@ -55,7 +84,7 @@ If permissions need changing, simply update them:
 ```ts
 //...
 if (!user.can('read', 'users')) {
-  console.log('Ops, wrong permissions!');
+  console.log('Oops, wrong permissions!');
 }
 
 permissions.read = ['data', 'users'];
@@ -69,20 +98,63 @@ And that's the basics!
 
 ## Modules
 
-There are 4 isolated modules:
+There are 5 isolated modules:
 
-- [`casbin-client`](#createauthorizer) - the tiny "core" of the package with a single purpose - to help create an authorizer
+- [`casbin-client/core`](#authorizer) - the tiny "core" of the package with a single purpose - to create an authorizer
+- [`casbin-client`](#createauthorizer) - exports a multi-purpose factory for advanced uses
 - [`casbin-client/model`](#casbin-clientmodel) - parser for [Casbin models](https://casbin.org/docs/syntax-for-models)
 - [`casbin-client/policy`](#casbin-clientpolicy) - parser for [Casbin policies](https://casbin.org/docs/policy-storage)
 - [`casbin-client/parser`](#casbin-clientparser) - parser for [Casbin expressions](https://casbin.org/docs/syntax-for-models#matchers)
 
-Each module is independent from others, and thus `casbin-client` has little effect on the final bundle size of your application.
+Each module is independent from others, and thus very has little effect on the final bundle size of your application.
+
+### `authorizer`
+
+As covered in the [basics](#basics) section, `casbin-client` exports a simple `createAuthorizer` function, with some helper types.\
+But what if even this is too much?\
+Enter, `casbin-client/core`:
+
+```ts
+import { authorizer, type Permissions } from 'casbin-client/core';
+
+const permissions = {
+  read: ['data', 'users'] as const
+} satisfies Permissions; // enables full autocomplete
+
+const can = authorizer(() => permissions);
+
+if (can('read', 'data')) {
+  console.log('Yay, we can read data!');
+}
+// Logs "Yay, we can read data!"
+
+```
+
+It accepts a simple `AuthorizerOptions` object as its second argument:
+```ts
+import { type AuthorizerOptions } from 'casbin-client/core';
+
+const options = {
+  fallback: (action, object) => object !== 'database' && action !== 'delete',
+  // A fallback function to resolve missing permissions
+};
+
+const can = authorizer(() => permissions);
+
+if (can('delete', 'database')) {
+  console.log('We are doomed!');
+} else {
+  console.log('Phew, we are safe.');
+}
+// Logs "Phew, we are safe."
+```
 
 ### `createAuthorizer`
 
-As covered in the [basics](#basics) section, `casbin-client` exports a `createAuthorizer` function, with some helper types.
+This is a much more versatile factory function.\
+It allows automatic caching using the `Storage` API and working with promises.
 
-`createAuthorizer` accepts two arguments:
+`createAuthorizer` also accepts two arguments:
 - a `Permissions` object:
   ```ts
   import { type Permissions } from 'casbin-client';
@@ -93,9 +165,9 @@ As covered in the [basics](#basics) section, `casbin-client` exports a `createAu
   ```
 - and customization options (optional)
   ```ts
-  import { type AuthorizerOptions } from 'casbin-client';
+  import { type SyncAuthorizerOptions } from 'casbin-client';
 
-  const options: AuthorizerOptions = {
+  const options: SyncAuthorizerOptions = {
     store: sessionStorage,
     // A `Storage` object to use as a cache for permissions
 
@@ -123,27 +195,8 @@ if (user.can('delete', 'database')) {
 
 > **Note**
 >
-> The `.can` method always runs the permission factory!\
-> In reactive UI-frameworks it is advised to wrap its calls with computed primitive, like `useMemo` or `computed`.
-
-#### Typing
-
-`createAuthorizer` accepts a generic parameter, which can be automatically inferred from permissions:
-
-```ts
-type MyPermissions = {
-  read: ['data']
-};
-
-const permissions: any = {
-  read: ['data']
-};
-
-const auth = createAuthorizer<MyPermissions>(() => permissions);
-
-// Full autocomplete and type checking!
-auth.can('read', 'data');
-```
+> The `.can` method always re-runs the permission factory!\
+> In reactive UI-frameworks it is advised to wrap its calls with a computed primitive, like `useMemo` or `computed`.
 
 #### Async mode
 
@@ -181,6 +234,25 @@ await user.remote;
 if (user.can('read', 'data')) {
   console.log('Yay, we can read data!');
 }
+```
+
+### Typing
+
+Both `authorizer` and `createAuthorizer` accept a generic parameter, which can be automatically inferred from permissions:
+
+```ts
+type MyPermissions = {
+  read: ['data']
+};
+
+const permissions: any = {
+  read: ['data']
+};
+
+const auth = createAuthorizer<MyPermissions>(() => permissions);
+
+// Full autocomplete and type checking!
+auth.can('read', 'data');
 ```
 
 ### `casbin-client/model`
@@ -334,6 +406,7 @@ Casbin is amazing for dynamic and polymorphic control of user access. But the of
 - [ ] Support for complex pattern-matching (`/data/*`, `keyMatch(...)`)
 - [ ] Support for internal `eval(...)` and other built-in functions
 - [ ] Support for custom matcher contexts
+- [ ] Support for [effect expressions](https://casbin.org/docs/syntax-for-models#policy-effect)
 - [ ] Full test coverage
 
 Feel like something's missing? [Submit an issue](issues/new)!\

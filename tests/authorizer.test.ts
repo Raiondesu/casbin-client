@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { createAuthorizer, type AsyncAuthorizer, type Permissions } from '../src';
+import { authorizer } from '../src/core';
 
 type SimplePermissions = Permissions<
   'read' | 'write' | 'delete',
@@ -25,6 +26,25 @@ export const permissions = {
     }),
   }
 };
+
+describe('Simple authorizer', () => {
+  test('example from README', () => {
+    const permissions = {
+      read: ['data']
+    };
+
+    const can = authorizer(() => permissions);
+
+    expect(can('read', 'data')).toBeTrue();
+    expect(!can('read', 'users')).toBeTrue();
+
+    permissions.read = ['data', 'users'];
+
+    expect(can('read', 'users')).toBeTrue();
+    expect(can('read', ['data', 'users'])).toBeTrue();
+    expect(can('read', ['data', 'huh?'])).toBeFalse();
+  });
+});
 
 describe('Authorizer', () => {
   test('works with simple permissions in a synchronized way', () => {
@@ -57,21 +77,6 @@ describe('Authorizer', () => {
 
     // user
     checkPermissions(auth);
-  });
-
-  test('example from README', () => {
-    const permissions = {
-      read: ['data']
-    };
-
-    const user = createAuthorizer(() => permissions);
-
-    expect(user.can('read', 'data')).toBeTrue();
-    expect(!user.can('read', 'users')).toBeTrue();
-
-    permissions.read = ['data', 'users'];
-
-    expect(user.can('read', 'users')).toBeTrue();
   });
 });
 

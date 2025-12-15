@@ -1,3 +1,3 @@
 var p=()=>()=>!0;function m(t,r){let{parseExpression:i=p}=r??{},o={requestDefinition:{},policyDefinition:{},roleDefinition:{},policyEffect:{},matchers:{}};for(let[e,n]of M(t))for(let f of n){let[s,c]=f.split(a).map((l)=>l.trim());if(!s||!c)continue;switch(e){case"matchers":case"policyEffect":o[e][s]=i(c,s,e);break;default:o[e][s]=c.split(d);break}}return o}var a=/=(.*)/,d=/,\s*/,y=/(?<type>[\w_]+)\]\n(?<expr>[^[]+)/g;function*M(t){let r=t.matchAll(y);for(let i of r){let{type:o,expr:e}=i.groups??{};if(!o||!e)continue;yield[u(o),e.split(`
 `).map((n)=>n.trim()).filter((n)=>!!n)]}}function u(t){return t.replace(/_([a-z])/g,(r,i)=>i.toUpperCase())}export{m as parseModel,p as naiveParser};
-export{m as a};
+export{m as b};

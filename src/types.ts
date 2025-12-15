@@ -1,7 +1,3 @@
-export type Permissions<Actions extends string = string, Objects extends string = string> = {
-  [action in Actions]: Array<Objects | undefined>;
-}
-
 export type ModelRecord = Record<string, string>;
 export type ModelEffect = (...args: any) => boolean;
 
