@@ -1,6 +1,13 @@
 {
   "name": "casbin-client",
   "version": "0.0.0",
+  "type": "module",
+  "types": "src",
+  "description": "Lightweight client for Casbin",
+  "sideEffects": false,
+  "repository": {
+    "url": "git+https://github.com/Raiondesu/casbin-client.git"
+  },
   "author": {
     "name": "Raiondesu",
     "url": "https://github.com/raiondesu"
@@ -56,15 +63,23 @@
       "import": "./dist/min/parser.js"
     }
   },
-  "description": "Lightweight client for Casbin",
-  "keywords": ["casbin", "casbin.js", "permissions", "rbac", "abac", "access-control", "access"],
+  "keywords": [
+    "casbin",
+    "casbin.js",
+    "permissions",
+    "rbac",
+    "abac",
+    "access-control",
+    "access",
+    "casbin-frontend",
+    "authz",
+    "authorization",
+    "auth"
+  ],
   "scripts": {
     "build": "bun scripts/build.ts",
     "test": "bun test && bun scripts/badges.ts"
   },
-  "sideEffects": false,
-  "type": "module",
-  "types": "src",
   "dependencies": {
     "subscript": "^9.1.0"
   }

@@ -1,8 +1,8 @@
-# casbin-client ![](assets/wip.svg)
+# casbin-client [![](assets/wip.svg)]()
 
-![](assets/version.svg) ![](assets/size-core.svg) ![](assets/size-full.svg) ![](assets/coverage.svg)
+[![](assets/version.svg)](https://www.npmjs.com/package/casbin-client) ![](assets/size-core.svg) ![](assets/size-full.svg) ![](assets/coverage.svg)
 
-`casbin-client` is a frontend which facilitates manipulation, management, and storage of user permissions in a frontend application for the purposes of authorization. It supports various access control policies, like RBAC, ABAC, ACL, etc.
+`casbin-client` is a library which facilitates manipulation, management, and storage of user permissions in a frontend application for the purposes of authorization. It supports various access control policies, like RBAC, ABAC, ACL, etc.
 
 It is primarily a library for [**Casbin**](https://casbin.org) and strives to be a more modern and polymorphic alternative to the official [Casbin.js](https://github.com/casbin/casbin.js) client library; it is a complete rewrite from the ground up, sharing zero code with its predecessor. It can and will work without any dependencies, however, so having any knowledge of Casbin is entierly optional.
 
@@ -21,11 +21,10 @@ It is primarily a library for [**Casbin**](https://casbin.org) and strives to be
 
 # Install
 
-Due to extremely early WIP status of this package, installation is only available from github for now:
 ```bash
-npm i github:raiondesu/casbin-client
+npm i casbin-client
 # or
-bun add github:raiondesu/casbin-client
+bun add casbin-client
 ```
 
 # Use
