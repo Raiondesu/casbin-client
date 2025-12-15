@@ -58,6 +58,21 @@ describe('Authorizer', () => {
     // user
     checkPermissions(auth);
   });
+
+  test('example from README', () => {
+    const permissions = {
+      read: ['data']
+    };
+
+    const user = createAuthorizer(() => permissions);
+
+    expect(user.can('read', 'data')).toBeTrue();
+    expect(!user.can('read', 'users')).toBeTrue();
+
+    permissions.read = ['data', 'users'];
+
+    expect(user.can('read', 'users')).toBeTrue();
+  });
 });
 
 function checkPermissions(auth: {

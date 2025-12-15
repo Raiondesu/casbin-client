@@ -36,9 +36,11 @@ At the centrepoint is the concept of an *Authorizer* - a singleton that looks at
 ```ts
 import { createAuthorizer } from 'casbin-client';
 
-let user = createAuthorizer(() => ({
+const permissions = {
   read: ['data']
-}));
+};
+
+const user = createAuthorizer(() => permissions);
 
 if (user.can('read', 'data')) {
   console.log('Yay, we can read data!');
@@ -48,7 +50,7 @@ if (user.can('read', 'data')) {
 
 `createAuthorizer` takes a simple `Permissions` factory as its primary argument and provides a semantic interface to read from it.
 It never modifies or tampers with the original object, acting like a simple view on it.\
-If permissions need changing, simply create a new authorizer:
+If permissions need changing, simply update them:
 
 ```ts
 //...
@@ -56,9 +58,7 @@ if (!user.can('read', 'users')) {
   console.log('Ops, wrong permissions!');
 }
 
-user = createAuthorizer(() => ({
-  read: ['data', 'users']
-}));
+permissions.read = ['data', 'users'];
 
 if (user.can('read', 'users')) {
   console.log('Yay, we can read users!');
