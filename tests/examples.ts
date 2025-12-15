@@ -8,20 +8,22 @@ export const sources = {
       ["g", "bob", "reader"],
       ["g", "cathy", "admin"],
     ],
-    "m": `[request_definition]
-r = sub, obj, act
+    "m": `
+      [request_definition]
+      r = sub, obj, act
 
-[policy_definition]
-p = sub, obj, act
+      [policy_definition]
+      p = sub, obj, act
 
-[role_definition]
-g = _, _
+      [role_definition]
+      g = _, _
 
-[policy_effect]
-e = some(where (p.eft == allow))
+      [policy_effect]
+      e = some(where (p.eft == allow))
 
-[matchers]
-m = r.obj == p.obj && r.act == p.act && "sub" in r && g(r.sub, p.sub)`,
+      [matchers]
+      m = r.obj == p.obj && r.act == p.act && "sub" in r && g(r.sub, p.sub)
+    `,
     "p": [
       ["p", "reader", "data", "read"],
       ["p", "writer", "data", "write"],

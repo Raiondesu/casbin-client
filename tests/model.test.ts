@@ -42,4 +42,33 @@ describe('Model parser', () => {
       return parsed.policyEffect.e();
     }).toThrow();
   });
+
+  test('example from README', () => {
+    const model = `
+      [request_definition]
+      r = sub, obj, act
+
+      [policy_definition]
+      p = sub, obj, act
+
+      [role_definition]
+      g = _, _
+
+      [policy_effect]
+      e = some(where (p.eft == allow))
+
+      [matchers]
+      m = r.obj == p.obj && r.act == p.act && g(r.sub, p.sub)
+    `;
+
+    const parsed = parseModel(model);
+
+    expect(parsed.matchers.m({
+      r: { sub: 'alice', act: 'read', obj: 'data' },
+      p: { sub: 'reader', act: 'read', obj: 'data' },
+      g: (r, p) => 'alice' === r && 'reader' === p,
+      ...parsed.matchers,
+      ...parsed.policyEffect
+    })).toBeTrue();
+  });
 });

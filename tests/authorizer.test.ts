@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createAuthorizer, type Authorizer, type Permissions } from '../src';
+import { createAuthorizer, type AsyncAuthorizer, type Permissions } from '../src';
 
 type SimplePermissions = Permissions<
   'read' | 'write' | 'delete',
@@ -32,9 +32,9 @@ describe('Authorizer', () => {
       Object.entries(permissions.simple)
         .map(([user, perm]) => [
           user,
-          createAuthorizer(perm)
+          createAuthorizer(() => perm)
         ], [])
-    ) as { [key in keyof typeof permissions['simple']]: Authorizer<typeof permissions['simple'][key]> };
+    ) as { [key in keyof typeof permissions['simple']]: AsyncAuthorizer<typeof permissions['simple'][key]> };
 
     // user
     checkPermissions(auth);
@@ -42,14 +42,18 @@ describe('Authorizer', () => {
 
   test('works with simple permissions and waits for promises', async () => {
     const auth = Object.fromEntries(
-      await Promise.all(
-        Object.entries(permissions.simple)
-          .map(async ([user, perm]) => [
-            user,
-            await createAuthorizer(Promise.resolve(perm))
-          ], [])
-      )
-    ) as { [key in keyof typeof permissions['simple']]: Authorizer<typeof permissions['simple'][key]> };
+      Object.entries(permissions.simple)
+        .map(([user, perm]) => [
+          user,
+          createAuthorizer(Promise.resolve(perm))
+        ], [])
+    ) as { [key in keyof typeof permissions['simple']]: AsyncAuthorizer<typeof permissions['simple'][key]> };
+
+    expect(auth.admin.can.read('data')).toBeFalse();
+    expect(auth.admin.can.write('data')).toBeFalse();
+    expect(auth.admin.can.delete('data')).toBeFalse();
+
+    await Promise.all(Object.values(auth).map(a => a.remote));
 
     // user
     checkPermissions(auth);
@@ -57,9 +61,9 @@ describe('Authorizer', () => {
 });
 
 function checkPermissions(auth: {
-  user: Authorizer<SimplePermissions>;
-  admin: Authorizer<SimplePermissions>;
-  system: Authorizer<SimplePermissions>;
+  user: AsyncAuthorizer<SimplePermissions>;
+  admin: AsyncAuthorizer<SimplePermissions>;
+  system: AsyncAuthorizer<SimplePermissions>;
 }) {
   expect(auth.user.can.read('data')).toBeTrue();
   expect(auth.user.can.write('data')).toBeTrue();
