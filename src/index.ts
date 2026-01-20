@@ -65,6 +65,8 @@ export function createAuthorizer<const P extends Permissions>(
     store = globalThis.sessionStorage ?? {},
     key = 'auth',
     fallback = () => false,
+    matchAction,
+    matchObject
   } = options;
 
   const captureAuthorizer = (permissions: () => P | null | undefined, remote?: Promise<P>) => {
@@ -75,7 +77,7 @@ export function createAuthorizer<const P extends Permissions>(
       return p.permissions;
     };
 
-    const can = authorizer(get, { fallback });
+    const can = authorizer(get, { fallback, matchAction, matchObject });
 
     return {
       get permissions(): P | null | undefined { return get() },
