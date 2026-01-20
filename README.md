@@ -137,9 +137,15 @@ import { type AuthorizerOptions } from 'casbin-client/core';
 const options = {
   fallback: (action, object) => object !== 'database' && action !== 'delete',
   // A fallback function to resolve missing permissions
+
+  matchAction: (action, source) => source?.[action],
+  // A matcher for actions in permissions (default value)
+
+  matchObject: (object, objects) => objects?.includes(object),
+  // A matcher for objects in actions (default value)
 };
 
-const can = authorizer(() => permissions);
+const can = authorizer(() => permissions, options);
 
 if (can('delete', 'database')) {
   console.log('We are doomed!');

@@ -1,51 +1,32 @@
-import { expect, expectTypeOf, test } from 'bun:test';
+import { expect, expectTypeOf, test } from "bun:test";
 
-import { createAuthorizer, type Permissions, type Authorizer } from '../src';
-import { parseExpression } from '../src/parser';
-import { fromPolicySource } from '../src/policy';
-import { sources } from './examples';
+import { createAuthorizer, type Permissions, type Authorizer } from "../src";
+import { parseExpression } from "../src/parser";
+import { fromPolicySource } from "../src/policy";
+import { sources } from "./examples";
 
-test('All work in unison', async () => {
-  type P = Permissions<'read' | 'write' | 'delete', 'data'>;
-  const auth = createAuthorizer(() => fromPolicySource<P>(sources.simple, { parseExpression }));
+test("All work in unison", async () => {
+  type P = Permissions<"read" | "write" | "delete", "data">;
+  const auth = createAuthorizer(() =>
+    fromPolicySource<P>(sources.simple, { parseExpression }),
+  );
 
   expectTypeOf(auth).toEqualTypeOf<Authorizer<P>>();
 
-  expect(auth.can('read', 'data')).toBeTrue();
-  expect(auth.can(
-    // @ts-expect-error incorrect permission
-    'huh?',
-    'data'
-  )).toBeFalse();
-  expect(auth.can('read',
-    // @ts-expect-error incorrect permission
-    'crap'
-  )).toBeFalse();
+  expect(auth.can("read", "data")).toBeTrue();
+  expect(auth.can("huh?", "data")).toBeFalse();
+  expect(auth.can("read", "crap")).toBeFalse();
 
-  expect(auth.can('write', 'data')).toBeTrue();
-  expect(auth.can(
-    // @ts-expect-error incorrect permission
-    'huh?',
-    'data'
-  )).toBeFalse();
-  expect(auth.can('write',
-    // @ts-expect-error incorrect permission
-    'crap'
-  )).toBeFalse();
+  expect(auth.can("write", "data")).toBeTrue();
+  expect(auth.can("huh?", "data")).toBeFalse();
+  expect(auth.can("write", "crap")).toBeFalse();
 
-  expect(auth.can('delete', 'data')).toBeTrue();
-  expect(auth.can(
-    // @ts-expect-error incorrect permission
-    'huh?',
-    'data'
-  )).toBeFalse();
-  expect(auth.can('delete',
-    // @ts-expect-error incorrect permission
-    'crap'
-  )).toBeFalse();
+  expect(auth.can("delete", "data")).toBeTrue();
+  expect(auth.can("huh?", "data")).toBeFalse();
+  expect(auth.can("delete", "crap")).toBeFalse();
 });
 
-test('Example from README', () => {
+test("Example from README", () => {
   const model = `
     [request_definition]
     r = sub, obj, act
@@ -76,20 +57,20 @@ test('Example from README', () => {
       ["p", "reader", "data", "read"],
       ["p", "writer", "data", "write"],
       ["p", "admin", "data", "delete"],
-    ]
+    ],
   };
 
   // Note that this is a costly function to call
   const permissions = fromPolicySource(policy);
   const user = createAuthorizer(() => permissions);
 
-  expect(user.can('read', 'data')).toBeTrue();
+  expect(user.can("read", "data")).toBeTrue();
 
   const alicePermissions = fromPolicySource(policy, {
-    request: ['r', 'alice']
+    request: ["r", "alice"],
   });
   const alice = createAuthorizer(() => alicePermissions);
 
-  expect(alice.can('read', 'data')).toBeTrue();
-  expect(!alice.can('delete', 'data')).toBeFalse();
+  expect(alice.can("read", "data")).toBeTrue();
+  expect(!alice.can("delete", "data")).toBeFalse();
 });

@@ -33,7 +33,14 @@ describe('Simple authorizer', () => {
       read: ['data']
     };
 
-    const can = authorizer(() => permissions);
+    const can = authorizer(() => permissions, {
+      matchAction(action, source) {
+        return source?.[action]
+      },
+      matchObject(object, source) {
+        return source?.includes(object);
+      }
+    });
 
     expect(can('read', 'data')).toBeTrue();
     expect(!can('read', 'users')).toBeTrue();
