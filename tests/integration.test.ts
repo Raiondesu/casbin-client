@@ -14,15 +14,21 @@ test("All work in unison", async () => {
   expectTypeOf(auth).toEqualTypeOf<Authorizer<P>>();
 
   expect(auth.can("read", "data")).toBeTrue();
+  // @ts-expect-error unknown action is rejected by the type and denied at runtime
   expect(auth.can("huh?", "data")).toBeFalse();
+  // @ts-expect-error unknown object is rejected by the type and denied at runtime
   expect(auth.can("read", "crap")).toBeFalse();
 
   expect(auth.can("write", "data")).toBeTrue();
+  // @ts-expect-error unknown action
   expect(auth.can("huh?", "data")).toBeFalse();
+  // @ts-expect-error unknown object
   expect(auth.can("write", "crap")).toBeFalse();
 
   expect(auth.can("delete", "data")).toBeTrue();
+  // @ts-expect-error unknown action
   expect(auth.can("huh?", "data")).toBeFalse();
+  // @ts-expect-error unknown object
   expect(auth.can("delete", "crap")).toBeFalse();
 });
 
@@ -68,9 +74,20 @@ test("Example from README", () => {
 
   const alicePermissions = fromPolicySource(policy, {
     request: ["r", "alice"],
+    parseExpression,
   });
   const alice = createAuthorizer(() => alicePermissions);
 
+  // alice is a reader + writer (per `g`), so she can read but not delete.
   expect(alice.can("read", "data")).toBeTrue();
-  expect(!alice.can("delete", "data")).toBeFalse();
+  expect(alice.can("delete", "data")).toBeFalse();
+
+  // Filtering by request WITHOUT a parser fails closed (denies) instead of granting all.
+  const reported: string[] = [];
+  const denied = fromPolicySource(policy, {
+    request: ["r", "alice"],
+    onError: (_e, ctx) => reported.push(ctx),
+  });
+  expect(denied).toEqual({});
+  expect(reported).toEqual(["policy.fromPolicySource"]);
 });

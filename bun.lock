@@ -1,10 +1,11 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "casbin-client",
       "dependencies": {
-        "subscript": "^9.1.0",
+        "subscript": "^10.4.17",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -43,7 +44,7 @@
 
     "lcov-parse": ["lcov-parse@0.0.6", "", {}, "sha512-chuBQJZiBq28YUM6Yr3tf3h5Lxhb+DvhbxxSNpsHURSXiZXOzp49phiWG2pKHboOehJDujivwNQGRP8mAErMvQ=="],
 
-    "subscript": ["subscript@9.1.0", "", {}, "sha512-BFirMqrnPbfQxh3yOsIBJ7rF15+aP2t5Wj3YjS8kda62pFpOqy3KhGeBUDZigfeJJvfSztLAW133wuZvT7D4gA=="],
+    "subscript": ["subscript@10.4.17", "", {}, "sha512-ViyfbqID9UpF091ehp5Wb4SqT0WGdaX3JA2U56takVmKnueuJVsF6j6g1yW9Jkh27/pHY8U1Skz9XVIbMIw1Sg=="],
 
     "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 

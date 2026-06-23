@@ -1,6 +1,6 @@
 import type { Permissions } from "./core";
 import { parseModel, type ModelParserOptions, type ModelContext } from "./model";
-import type { DefinitionKey, Model, ModelRecord, PolicyDefinition, RoleContext, RoleDefinitions } from "./types";
+import type { DefinitionKey, ErrorReporter, Model, ModelRecord, PolicyDefinition, RoleContext, RoleDefinitions } from "./types";
 
 export interface PolicySource {
   m: string;
@@ -11,6 +11,9 @@ export interface PolicySource {
 export interface PolicyParserOptions {
   request?: [DefinitionKey<'r'>, ...string[]];
   permissionModel?: string[];
+
+  /** Reports a recoverable error; request filtering fails closed (denies) after reporting. */
+  onError?: ErrorReporter;
 }
 
 export const defaultPermissionModel = ['act', 'obj'];
@@ -20,12 +23,24 @@ export function fromPolicySource<P extends Permissions>(
   options?: PolicyParserOptions & ModelParserOptions
 ): P {
   const {
-    request, parseExpression,
+    request, parseExpression, onError,
     permissionModel = defaultPermissionModel
   } = options ?? {};
-  const model = parseModel(source.m, { parseExpression });
 
-  return fromCustomModel<P>(model, source, { request, permissionModel });
+  // Filtering by request needs a real matcher. Without `parseExpression` the default
+  // naive parser matches everything, which would silently grant ALL policies to the
+  // subject — so we report and fail closed (deny) instead of failing open.
+  if (request && !parseExpression) {
+    onError?.(
+      new Error('`request` filtering requires `parseExpression`; denying to fail closed'),
+      'policy.fromPolicySource',
+    );
+    return {} as P;
+  }
+
+  const model = parseModel(source.m, { parseExpression, onError });
+
+  return fromCustomModel<P>(model, source, { request, permissionModel, onError });
 }
 
 export function fromCustomModel<P extends Permissions>(
@@ -35,7 +50,8 @@ export function fromCustomModel<P extends Permissions>(
 ) {
   const {
     request: presetRequest,
-    permissionModel = defaultPermissionModel
+    permissionModel = defaultPermissionModel,
+    onError
   } = options ?? {};
   const [requestGroup, ...request] = presetRequest ?? ['r'];
   const requestType = getSectionType(requestGroup);
@@ -43,41 +59,65 @@ export function fromCustomModel<P extends Permissions>(
   const groups = createRoleContext(model.roleDefinition, source.g);
   const matcher = model.matchers[`m${requestType === 1 ? '' : requestType}`];
 
-  return source.p.reduce(
-    (perms, [policyGroup, ...policy]) => {
-      const policyType = getSectionType(policyGroup);
+  // A request needs a matcher to evaluate against. If the model has none, deny.
+  if (presetRequest && !matcher) {
+    onError?.(
+      new Error(`no matcher \`m${requestType === 1 ? '' : requestType}\` to filter the request; denying`),
+      'policy.fromCustomModel',
+    );
+    return {} as P;
+  }
 
-      if (requestType !== policyType) return perms;
+  const [keyProp, objProp] = permissionModel;
+  const matched: Array<{ key: string; obj: string; deny: boolean }> = [];
 
-      const def = model.policyDefinition[policyGroup as DefinitionKey<'p'>]!;
-      const policyContext = toModelContext(def, policy);
+  for (const [policyGroup, ...policy] of source.p) {
+    if (requestType !== getSectionType(policyGroup)) continue;
 
-      const [key, nextValue] = permissionModel.map(key => policyContext[key]);
+    const def = model.policyDefinition[policyGroup as DefinitionKey<'p'>];
+    if (!def) continue;
 
-      const previous = perms[key] ?? [];
-      const result = () => ({
-        ...perms,
-        [key]: [...previous, nextValue],
-      });
+    const policyContext = toModelContext(def, policy);
 
-      if (!presetRequest) return result();
-
-      const requestContext = toModelContext(def, request, policyContext);
-
+    if (presetRequest) {
       const context = {
-        [requestGroup]: requestContext,
+        [requestGroup]: toModelContext(def, request, policyContext),
         [policyGroup]: policyContext,
         ...groups,
         ...model.matchers,
-        ...model.policyEffect
+        ...model.policyEffect,
       } as ModelContext;
 
-      return matcher(context)
-        ? result()
-        : perms;
-    },
-    {} as P
+      if (!matcher!(context)) continue;
+    }
+
+    const key = policyContext[keyProp];
+    const obj = policyContext[objProp];
+    if (key == null || obj == null) {
+      onError?.(
+        new Error(`policy row \`${policy.join(', ')}\` is missing its \`${key == null ? keyProp : objProp}\` column; skipping`),
+        'policy.fromCustomModel',
+      );
+      continue;
+    }
+
+    matched.push({ key, obj, deny: policyContext.eft === 'deny' });
+  }
+
+  // Allow rows grant; matching deny rows (eft == 'deny') override them — a fail-safe
+  // deny-override that also stops deny rows from being added as permissions. Deduped.
+  const denied = new Set(
+    matched.filter(m => m.deny).map(m => `${m.key} ${m.obj}`),
   );
+  const perms: Record<string, string[]> = {};
+
+  for (const { key, obj, deny } of matched) {
+    if (deny || denied.has(`${key} ${obj}`)) continue;
+    const list = (perms[key] ??= []);
+    if (!list.includes(obj)) list.push(obj);
+  }
+
+  return perms as unknown as P;
 }
 
 function getSectionType(group: string) {
@@ -100,9 +140,27 @@ export function createRoleContext(roleModel: RoleDefinitions, roleGroups?: strin
 
     return {
       ...acc,
-      [g as DefinitionKey<'g'>]: (...args: string[]) => {
-        return vals[g].some(val => args.every((a, i) => val[i] === a));
-      },
+      [g as DefinitionKey<'g'>]: (...args: string[]) => hasRole(vals[g], args),
     };
   }, {} as RoleContext);
+}
+
+/**
+ * Transitive role check with a cycle guard. `args` is `[subject, role, ...domain]` and
+ * each edge is `[child, parent, ...domain]`; a role is reachable through intermediate
+ * roles as long as any trailing (domain) arguments match at every hop. This implements
+ * Casbin's role inheritance — `g(alice, admin)` + `g(admin, super)` ⇒ `g(alice, super)` —
+ * instead of a single direct-edge lookup.
+ */
+function hasRole(edges: string[][], args: string[]): boolean {
+  const [subject, role, ...domain] = args;
+  const inDomain = (edge: string[]) => domain.every((d, i) => edge[2 + i] === d);
+
+  const seen = new Set<string>();
+  const reaches = (from: string): boolean =>
+    from === role ||
+    (!seen.has(from) && (seen.add(from),
+      edges.some(edge => edge[0] === from && inDomain(edge) && reaches(edge[1]))));
+
+  return reaches(subject);
 }

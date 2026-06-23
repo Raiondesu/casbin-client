@@ -1,3 +1,5 @@
+import type { ErrorReporter } from './types';
+
 export type MatchAction<P extends Permissions = Permissions> = (
   action: keyof P,
   source?: null | P,
@@ -33,14 +35,20 @@ export interface AuthorizerOptions<P extends Permissions = Permissions> {
    * @param object an object to perform the action on
    * @param source permissions object
    */
-  matchObject?: MatchObject;
+  matchObject?: MatchObject<P>;
+
+  /**
+   * Reports a recoverable error (corrupt cache, misconfiguration, unparseable input).
+   * The library always fails safe (deny/degrade) after reporting; it never throws at a check.
+   */
+  onError?: ErrorReporter;
 }
 
 export type Permissions<
   Actions extends string = string,
   Objects extends string = string,
 > = {
-  [action in Actions]: Array<Objects | undefined>;
+  [action in Actions]: readonly Objects[];
 };
 
 /**
@@ -56,8 +64,8 @@ export function authorizer<const P extends Permissions>(
 ): Can<P> {
   const {
     fallback = () => false,
-    matchAction = (action: string, source?: P | null) => source?.[action],
-    matchObject = (obj: string, source?: null | Array<string | undefined>) =>
+    matchAction = (action: keyof P, source?: P | null) => source?.[action],
+    matchObject = (obj: P[keyof P][number], source?: null | P[keyof P]) =>
       source?.includes(obj),
   } = options ?? {};
 
@@ -66,34 +74,17 @@ export function authorizer<const P extends Permissions>(
     O extends P[A][number] & string,
   >(action: A | A[], object: O | O[]): boolean {
     return Array.isArray(action)
-      ? action.every((a) => can(a, object))
+      ? action.length > 0 && action.every((a) => can(a, object))
       : Array.isArray(object)
-        ? object.every((o) => can(action, o))
+        ? object.length > 0 && object.every((o) => can(action, o))
         : matchObject(object, matchAction(action, permissions())) ??
           fallback(action, object);
   };
 }
 
 export interface Can<P extends Permissions, R = boolean> {
-  <A extends keyof P & string, O extends P[A][number] & string>(
-    actions: A[],
-    object: O,
-  ): R;
-  <A extends keyof P & string, O extends P[A][number] & string>(
-    action: A,
-    objects: O[],
-  ): R;
-  <A extends keyof P & string, O extends P[A][number] & string>(
-    action: A,
-    object: O,
-  ): R;
-  <A extends keyof P & string, O extends P[A][number] & string>(
-    action: A[],
-    objects: O[],
-  ): R;
-  <A extends keyof P & string, O extends P[A][number] & string>(
+  <A extends keyof P & string>(
     action: A | A[],
-    object: O | O[],
+    object: (P[A][number] & string) | (P[A][number] & string)[],
   ): R;
-  (action: string | string[], object: string | string[]): R;
 }

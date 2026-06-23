@@ -38,7 +38,7 @@ user.can('read', 'data');
 | Feature | `casbin-client` | `casbin.js` |
 |---------|-----------------|-------------|
 | 🌟 Modern tech-stack and dev practices | ✅ TypeScript, DI, FP | 🥀 Babel, OOP |
-| 🏝️ Less external dependencies | ✅ Zero-dependencies version available | 🥀 Mandatory `axios`, `babel`, [`casbin-core`](https://github.com/casbin/casbin-core) |
+| 🏝️ Less external dependencies | ✅ `core`/`model`/`policy` are dependency-free; only the parser uses [`subscript`](https://github.com/dy/subscript) | 🥀 Mandatory `axios`, `babel`, [`casbin-core`](https://github.com/casbin/casbin-core) |
 | 💻 Ergonomic development experience | ✅ Import and use how you like | 🥀 Use in compliance with assumptions hidden in source code |
 | 🪄 Support for various runtime modes | ✅ Supports both regular (*sync*) and *async* modes | 🥀 Every method is async |
 | 🪶 Lightweight and tree-shakeable | ✅ 0.5KB↔8KB, take what you need | 🥀 90KB+, no tree-shaking |
@@ -69,7 +69,7 @@ const permissions = {
   read: ['data']
 };
 
-const user.can = createAuthorizer(() => permissions);
+const user = createAuthorizer(() => permissions);
 
 if (user.can('read', 'data')) {
   console.log('Yay, we can read data!');
@@ -95,6 +95,9 @@ if (user.can('read', 'users')) {
 ```
 
 And that's the basics!
+
+> **Note**\
+> Checks fan out with **AND** semantics - `can(['read', 'write'], 'data')` is `true` only if *every* action is permitted. Empty arrays are treated as a denial (`can('read', []) === false`) rather than vacuously allowed, so a degenerate input never accidentally opens a gate.
 
 ## Modules
 
@@ -175,13 +178,16 @@ It allows automatic caching using the `Storage` API and working with promises.
 
   const options: SyncAuthorizerOptions = {
     store: sessionStorage,
-    // A `Storage` object to use as a cache for permissions
+    // A `WebStorage`-shaped object (e.g. `sessionStorage`) to cache permissions in
 
     key: 'auth',
     // A unique key to store the permissions in the store
 
     fallback: (action, object) => object !== 'database' && action !== 'delete',
     // A fallback function to resolve missing permissions
+
+    onError: (error, context) => console.warn(`[casbin-client] ${context}`, error),
+    // Reports recoverable errors (corrupt cache, misconfiguration); the library always fails safe
   };
   ```
 
@@ -308,6 +314,7 @@ See [the list of missing features](#roadmap--todo-list) to gauge if this is usef
 ```ts
 import { createAuthorizer } from 'casbin-client';
 import { fromPolicySource } from 'casbin-client/policy';
+import { parseExpression } from 'casbin-client/parser';
 
 const model = `
   [request_definition]
@@ -352,7 +359,8 @@ if (user.can('read', 'data')) {
 }
 
 const alicePermissions = fromPolicySource(policy, {
-  request: ['r', 'alice']
+  request: ['r', 'alice'],
+  parseExpression, // required to filter by subject - without it, filtering fails closed (denies)
 });
 
 const alice = createAuthorizer(() => alicePermissions);
@@ -368,7 +376,7 @@ if (!alice.can('delete', 'data')) {
 
 ### `casbin-client/parser`
 
-This module uses modified [`subscript`](https://github.com/dy/subscript) with a subset of `justin` syntax.
+This module uses [`subscript`](https://github.com/dy/subscript)'s **sandboxed** `justin` evaluator, with Casbin's `in` array-membership semantics added on top.
 
 ```ts
 import { parseExpression } from 'casbin-client/parser';
@@ -405,14 +413,15 @@ Casbin is amazing for dynamic and polymorphic control of user access. But the of
 - [x] Simple integration with any network/query client
 - [x] Ability to check user permissions using policies and model matchers
 - [x] Ability to parse permissions from policies without the baggage of matchers and effects
+- [x] Reliable error reporting (via the `onError` reporter)
+- [x] Transitive RBAC role inheritance (`g(alice, admin)` + `g(admin, super)` ⇒ `g(alice, super)`)
+- [x] [Policy effects](https://casbin.org/docs/syntax-for-models#policy-effect) (allow / deny-override)
 - [ ] Integrations for popular frontend frameworks
 - [ ] Generate ambient types from policy csv or permissions json
 - [ ] Parse permissions at the type level from policy source
-- [ ] Reliable error reporting
 - [ ] Support for complex pattern-matching (`/data/*`, `keyMatch(...)`)
 - [ ] Support for internal `eval(...)` and other built-in functions
 - [ ] Support for custom matcher contexts
-- [ ] Support for [effect expressions](https://casbin.org/docs/syntax-for-models#policy-effect)
 - [ ] Full test coverage
 
 Feel like something's missing? [Submit an issue](issues/new)!\
@@ -420,10 +429,11 @@ Wanna help? [Fork and submit a PR](fork)!
 
 # Security notice
 
-Parsing [model configuration](https://casbin.org/docs/syntax-for-models) leads to evaluation of user-provided expressions, which can lead to unsafe behavior. Refrain from using arbitrary model parsing on the client-side to avoid potential security risks!
+`casbin-client/parser` is built on [`subscript`](https://github.com/dy/subscript)'s **sandboxed** `justin` evaluator. Matcher and effect expressions cannot reach the `Function` constructor, prototypes, or JS globals, so they **cannot execute arbitrary code** - the `eval()`-class risk of earlier versions (and of `casbin.js`) is closed.
 
-> **Note**\
-> Despite lacking a similar warning, [Casbin.js](https://github.com/casbin/casbin.js) has the same potential for introducing vulnerabilities.
+One caveat remains, so prefer trusted model text where you can: there is **no evaluation timeout**, and an expression may call methods on the context values you pass it (e.g. `someString.repeat(1e9)`), so a hostile expression can still cause heavy computation (a DoS) on the main thread - it just can't run arbitrary code or read outside its context.
+
+The defaults are otherwise fail-closed: without `parseExpression`, request filtering denies rather than grants, and unparseable input is reported through `onError` and skipped.
 
 # Contributing
 

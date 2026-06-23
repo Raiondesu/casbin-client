@@ -3,8 +3,6 @@ import { join } from 'path';
 
 import { gzipSync } from 'bun';
 import { readdir, rm } from 'fs/promises';
-import { writeFile } from 'fs/promises';
-import { readFile } from 'fs/promises';
 
 import { c, formatBytes, group, writeBadge } from './utils';
 
@@ -21,7 +19,7 @@ try {
     outdir: 'dist',
 
     minify: false,
-    splitting: true,
+    splitting: false,
     packages: 'external',
   });
 
@@ -33,7 +31,7 @@ try {
 
     emitDCEAnnotations: true,
     minify: true,
-    splitting: true,
+    splitting: false,
     naming: { entry: '[dir]/[name].[ext]' },
   });
 
@@ -76,17 +74,6 @@ try {
   if (!complete) console.error("Build Failed!");
   console.error(error);
 }
-
-// https://github.com/oven-sh/bun/issues/14493
-await writeFile('dist/model.js', String(
-  await readFile('dist/model.js')
-).replace('export { parseModel };\n', ''));
-await writeFile('dist/core.js', String(
-  await readFile('dist/core.js')
-).replace('export { authorizer };\n', ''));
-await writeFile('dist/min/core.js', String(
-  await readFile('dist/min/core.js')
-).replace(/export{\w as a};\n/, ''));
 
 async function postProcess(result: Bun.BuildOutput, type: string) {
   if (result.success) {

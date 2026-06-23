@@ -1,13 +1,24 @@
-import {
-  authorizer
-} from "./core.js";
+// src/core.ts
+function authorizer(permissions, options) {
+  const {
+    fallback = () => false,
+    matchAction = (action, source) => source?.[action],
+    matchObject = (obj, source) => source?.includes(obj)
+  } = options ?? {};
+  return function can(action, object) {
+    return Array.isArray(action) ? action.length > 0 && action.every((a) => can(a, object)) : Array.isArray(object) ? object.length > 0 && object.every((o) => can(action, o)) : matchObject(object, matchAction(action, permissions())) ?? fallback(action, object);
+  };
+}
 
 // src/index.ts
 function createAuthorizer(getPermissions, options = {}) {
   const {
     store = globalThis.sessionStorage ?? {},
     key = "auth",
-    fallback = () => false
+    fallback = () => false,
+    matchAction,
+    matchObject,
+    onError
   } = options;
   const captureAuthorizer = (permissions, remote2) => {
     const p = { permissions: null };
@@ -16,16 +27,16 @@ function createAuthorizer(getPermissions, options = {}) {
       updateStore(p.permissions = permissions() ?? p.permissions ?? (local instanceof Promise ? null : local));
       return p.permissions;
     };
-    const can = authorizer(get, { fallback });
+    const can = authorizer(get, { fallback, matchAction, matchObject, onError });
     return {
       get permissions() {
         return get();
       },
       remote: remote2,
       can: new Proxy(can, {
-        get(target, p2) {
-          if (p2 in target)
-            return target[p2];
+        get(target, p2, receiver) {
+          if (typeof p2 === "symbol" || p2 === "then")
+            return Reflect.get(target, p2, receiver);
           return can.bind(null, p2);
         }
       })
@@ -36,26 +47,35 @@ function createAuthorizer(getPermissions, options = {}) {
   }
   const remote = getPermissions;
   const resolved = { permissions: null };
+  Promise.resolve(getStore()).then((cached) => {
+    resolved.permissions ??= cached;
+  }).catch(() => {});
   const updater = remote.then(async (p) => {
     await updateStore(resolved.permissions = p);
-    return resolved.permissions;
+    return p;
   });
-  const cached = Promise.resolve(getStore());
-  Promise.race([
-    updater.catch(() => cached).then((p) => resolved.permissions = p),
-    cached.catch(() => updater)
-  ]).then((p) => resolved.permissions = p);
+  updater.catch(() => {});
   return captureAuthorizer(() => resolved.permissions, updater);
   async function updateStore(permissions) {
     try {
-      await store.setItem?.(key, JSON.stringify(permissions));
-    } catch {}
+      await store.setItem?.(key, JSON.stringify(permissions ?? null));
+    } catch (error) {
+      onError?.(error, "createAuthorizer.updateStore");
+    }
   }
   function getStore() {
     const item = store.getItem?.(key);
     if (!(item instanceof Promise))
-      return JSON.parse(item ?? "null");
-    return item.then((r) => JSON.parse(r ?? "null"));
+      return safeParse(item);
+    return item.then(safeParse);
+  }
+  function safeParse(raw) {
+    try {
+      return JSON.parse(raw ?? "null");
+    } catch (error) {
+      onError?.(error, "createAuthorizer.getStore");
+      return null;
+    }
   }
 }
 export {

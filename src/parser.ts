@@ -1,40 +1,32 @@
-// We're reimplementing a bit of subscript/justin here because it lacks types
-import 'subscript/feature/number.js';
-import 'subscript/feature/string.js';
-import 'subscript/feature/call.js';
-import 'subscript/feature/access.js';
-import 'subscript/feature/group.js';
-import 'subscript/feature/ternary.js';
-import 'subscript/feature/bool.js';
-import 'subscript/feature/array.js';
-import 'subscript/feature/object.js';
-import 'subscript/feature/arrow.js';
-import 'subscript/feature/optional.js';
-import 'subscript/feature/spread.js';
-import 'subscript/feature/logic.js';
-import 'subscript/feature/compare.js';
-
-// oxlint-disable no-sparse-arrays
-import { compile, operator } from 'subscript/compile';
-import { binary, err, parse, token } from 'subscript/parse';
+// Built on subscript's sandboxed evaluator: matcher/effect expressions cannot reach the
+// `Function` constructor, prototypes, or JS globals, so they cannot execute arbitrary code.
+// We compose the base preset with just the features Casbin matchers need (literals, `in`,
+// array/object literals, ternary) — skipping justin's arrows/spread/templates/optional —
+// then add Casbin's `in` array-membership semantics. See https://github.com/dy/subscript
+import subscript from 'subscript';
+import 'subscript/feature/literal.js';        // true / false / null / undefined / NaN / Infinity
+import 'subscript/feature/op/membership.js';  // `in` (parse)
+import 'subscript/eval/op/membership.js';     // `in` (eval)
+import 'subscript/feature/collection.js';     // [a, b] and { a: b } literals (parse)
+import 'subscript/eval/collection.js';        // collection literals (eval)
+import 'subscript/feature/op/ternary.js';     // a ? b : c (parse)
+import 'subscript/eval/op/ternary.js';        // ternary (eval)
+import { compile, operator, parse } from 'subscript/parse';
 
 import type { ExpressionParser, Matcher, PolicyEffect } from './types';
 
-// We're reimplementing a bit of subscript/justin here because it lacks types
-// See https://github.com/dy/subscript/issues/26
-binary('in', 90);
+// Casbin allows single-quoted strings.
+parse.string["'"] = true;
 
 // https://casbin.org/docs/syntax-for-models#special-grammar
+// Casbin `in` is array membership (`x in [a, b]`), not JS's key-in-object lookup.
 operator('in', (a, b) => b && (a = compile(a), b = compile(b), (ctx: unknown) => {
-  const _b = b(ctx), _a = a(ctx);
-  return Array.isArray(_b) ? _b.includes(_a) : _a in (_b ?? {});
+  const right = b(ctx), left = a(ctx);
+  return Array.isArray(right) ? right.includes(left) : left in (right ?? {});
 }));
 
-// add JS literals
-token('undefined', 20, a => a ? err() : [, undefined])
-token('NaN', 20, a => a ? err() : [, NaN])
-token('null', 20, a => a ? err() : [, null])
-
 export function parseExpression<R extends Matcher | PolicyEffect>(source: string): ReturnType<ExpressionParser<R>> {
-  return compile(parse(source)) as R;
+  // `subscript()` returns an evaluator at runtime; its shipped type narrows to the AST,
+  // so bridge through `unknown`.
+  return subscript(source) as unknown as R;
 }

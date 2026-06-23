@@ -2,7 +2,8 @@
 var naiveParser = () => () => true;
 function parseModel(source, options) {
   const {
-    parseExpression = naiveParser
+    parseExpression = naiveParser,
+    onError
   } = options ?? {};
   const model = {
     requestDefinition: {},
@@ -13,36 +14,52 @@ function parseModel(source, options) {
   };
   for (const [section, statements] of parseStructure(source))
     for (const statement of statements) {
-      const [token, def] = statement.split(eq).map((s) => s.trim());
-      if (!token || !def)
+      const at = statement.indexOf("=");
+      const token = at < 0 ? "" : statement.slice(0, at).trim();
+      const def = at < 0 ? "" : statement.slice(at + 1).trim();
+      if (!token || !def) {
+        onError?.(new Error(`ignoring malformed statement \`${statement}\``), `model.${section}`);
         continue;
-      switch (section) {
-        case "matchers":
-        case "policyEffect":
-          model[section][token] = parseExpression(def, token, section);
-          break;
-        default:
-          model[section][token] = def.split(comma);
-          break;
+      }
+      try {
+        switch (section) {
+          case "matchers":
+          case "policyEffect":
+            model[section][token] = parseExpression(def, token, section);
+            break;
+          default:
+            model[section][token] = def.split(comma);
+            break;
+        }
+      } catch (error) {
+        onError?.(error, `model.${section}.${token}`);
       }
     }
   return model;
 }
-var eq = /=(.*)/;
 var comma = /,\s*/;
-var sectionRegExp = /(?<type>[\w_]+)\]\n(?<expr>[^[]+)/g;
+var header = /^\[(\w+)\]$/;
 function* parseStructure(source) {
-  const groups = source.matchAll(sectionRegExp);
-  for (const group of groups) {
-    const { type, expr } = group.groups ?? {};
-    if (!type || !expr)
+  let section;
+  let statements = [];
+  for (const raw of source.replace(/\r\n?/g, `
+`).split(`
+`)) {
+    const line = raw.replace(/#.*$/, "").trim();
+    if (!line)
       continue;
-    yield [
-      toCamelCaseSimple(type),
-      expr.split(`
-`).map((s) => s.trim()).filter((s) => !!s)
-    ];
+    const match = header.exec(line);
+    if (match) {
+      if (section)
+        yield [section, statements];
+      section = toCamelCaseSimple(match[1]);
+      statements = [];
+    } else if (section) {
+      statements.push(line);
+    }
   }
+  if (section)
+    yield [section, statements];
 }
 function toCamelCaseSimple(snakeStr) {
   return snakeStr.replace(/_([a-z])/g, (_, $1) => $1.toUpperCase());
@@ -51,4 +68,3 @@ export {
   parseModel,
   naiveParser
 };
-

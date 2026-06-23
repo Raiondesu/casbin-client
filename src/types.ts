@@ -1,3 +1,9 @@
+/**
+ * Reports a recoverable error (corrupt cache, misconfiguration, unparseable input).
+ * The library always fails safe (deny/degrade) after reporting it; it never throws at a check.
+ */
+export type ErrorReporter = (error: unknown, context: string) => void;
+
 export type ModelRecord = Record<string, string>;
 export type ModelEffect = (...args: any) => boolean;
 

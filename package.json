@@ -5,6 +5,7 @@
   "types": "src",
   "description": "Lightweight client for Casbin",
   "sideEffects": false,
+  "files": ["dist", "src", "README.md", "LICENSE"],
   "repository": {
     "url": "git+https://github.com/Raiondesu/casbin-client.git"
   },
@@ -91,6 +92,6 @@
     "test": "bun test && bun scripts/badges.ts"
   },
   "dependencies": {
-    "subscript": "^9.1.0"
+    "subscript": "^10.4.17"
   }
 }

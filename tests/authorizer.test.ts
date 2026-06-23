@@ -51,6 +51,18 @@ describe('Simple authorizer', () => {
     expect(can('read', ['data', 'users'])).toBeTrue();
     expect(can('read', ['data', 'huh?'])).toBeFalse();
   });
+
+  test('empty-array checks fail closed (no vacuous true)', () => {
+    const can = authorizer<Permissions>(() => ({ read: ['data'] }));
+
+    // `[].every()` is vacuously true — that would fail OPEN, so we reject it.
+    expect(can('read', [])).toBeFalse();
+    expect(can([], 'data')).toBeFalse();
+    expect(can([], [])).toBeFalse();
+
+    // Non-empty arrays keep their AND semantics.
+    expect(can(['read'], ['data'])).toBeTrue();
+  });
 });
 
 describe('Authorizer', () => {

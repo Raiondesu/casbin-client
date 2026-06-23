@@ -1,1 +1,1 @@
-function D(x,A){let{fallback:B=()=>!1}=A??{};return function w(d,q){return Array.isArray(d)?d.every((v)=>w(v,q)):Array.isArray(q)?q.every((v)=>w(d,v)):x()?.[d]?.includes(q)??B(d,q)}}export{D as authorizer};
+function G(x,B){let{fallback:D=()=>!1,matchAction:E=(q,d)=>d?.[q],matchObject:F=(q,d)=>d?.includes(q)}=B??{};return function q(d,v){return Array.isArray(d)?d.length>0&&d.every((w)=>q(w,v)):Array.isArray(v)?v.length>0&&v.every((w)=>q(d,w)):F(v,E(d,x()))??D(d,v)}}export{G as authorizer};
