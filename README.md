@@ -101,7 +101,7 @@ And that's the basics!
 
 ## Modules
 
-There are 6 isolated modules:
+There are 7 isolated modules:
 
 - [`casbin-client/core`](#authorizer) - the tiny "core" of the package with a single purpose - to create an authorizer
 - [`casbin-client`](#createauthorizer) - exports a multi-purpose factory for advanced uses
@@ -109,6 +109,7 @@ There are 6 isolated modules:
 - [`casbin-client/policy`](#casbin-clientpolicy) - parser for [Casbin policies](https://casbin.org/docs/policy-storage)
 - [`casbin-client/parser`](#casbin-clientparser) - parser for [Casbin expressions](https://casbin.org/docs/syntax-for-models#matchers)
 - [`casbin-client/functions`](#casbin-clientfunctions) - built-in pattern matchers (`keyMatch`, `globMatch`, …)
+- [`casbin-client/react`](#casbin-clientreact) - React bindings: hook, typed Provider/context, `<Can>` gate
 
 Each module is independent from others, and thus very has little effect on the final bundle size of your application.
 
@@ -440,6 +441,99 @@ You can supply or override functions via the `functions` option of `fromPolicySo
 fromPolicySource(policy, { request: ['r', 'alice'], parseExpression, functions: { keyMatch: myKeyMatch } });
 ```
 
+### `casbin-client/react`
+
+First-class React bindings. `react` is an optional [peer dependency](#install) (>=18). The integration is **data-source agnostic** - you own fetching/shaping and pass the resolved policy + a loading flag; it handles memoization, the `loading`-vs-`denied` distinction, and SSR hydration.
+
+> **Note**\
+> Three states are kept distinct: **loading** / **allowed** / **denied**. `isLoading` is a separate field, never folded into `can()` - so a pending policy denies by default (secure), and you branch on `isLoading` *first* to show a placeholder instead of a flash of "denied".
+
+#### The headless hook
+
+`useAuthorizer(permissions, options?)` needs no Provider - the truest drop-in:
+
+```tsx
+'use client';
+import { useAuthorizer, byPattern, globMatch } from 'casbin-client/react';
+import { useQuery } from '@tanstack/react-query'; // or SWR / RTK / raw fetch — anything
+
+function DataPanel() {
+  const { data, isLoading } = useQuery({ queryKey: ['perms'], queryFn: fetchPermissions });
+
+  const { can, isReady } = useAuthorizer(data, {
+    isLoading,
+    matchObject: byPattern(globMatch), // patterns: `/data/*` matches `/data/123` at check time
+  });
+
+  if (!isReady) return <Skeleton />;          // loading !== denied
+  return can('read', '/data/42') ? <Data /> : <NoAccess />;
+}
+```
+
+#### The typed factory (app-wide gating)
+
+`createAuthorizerContext<Permissions>()` bakes your `Permissions` type in once, so `can.read('data')` autocomplete survives the Provider boundary. Returns a typed `{ AuthorizerProvider, useAuthorizer, useCan, Can }`:
+
+```tsx
+// acl.ts — declare the scope once
+import { createAuthorizerContext, byPattern, globMatch } from 'casbin-client/react';
+import type { Permissions, AuthorizerOptions } from 'casbin-client/react';
+
+export type AppPermissions = Permissions<'read' | 'write' | 'delete', string>;
+
+// Hoist options to module scope for a stable identity (so the authorizer doesn't rebuild).
+export const aclOptions: AuthorizerOptions<AppPermissions> = { matchObject: byPattern(globMatch) };
+
+export const { AuthorizerProvider, useCan, useAuthorizer, Can } =
+  createAuthorizerContext<AppPermissions>();
+```
+
+```tsx
+// providers.tsx — you own the data layer
+'use client';
+import { AuthorizerProvider, aclOptions } from './acl';
+
+export function AclProvider({ children }) {
+  const { data, isLoading } = useQuery({ queryKey: ['perms'], queryFn: fetchPermissions });
+  return (
+    <AuthorizerProvider permissions={data} isLoading={isLoading} options={aclOptions}>
+      {children}
+    </AuthorizerProvider>
+  );
+}
+```
+
+```tsx
+// any component — hook or declarative gate
+import { useCan, Can } from './acl';
+
+const can = useCan();
+can.delete('/users/42');                    // curried + narrowed
+
+<Can action="read" object="/billing" loading={<Skeleton />} fallback={<NoAccess />}>
+  <BillingPanel />
+</Can>
+```
+
+#### Migrating from an ad-hoc wrapper
+
+| Hand-rolled wrapper | `casbin-client/react` |
+|---|---|
+| `useMemo(() => createAuthorizer(...), [items])` | `useAuthorizer(permissions, options)` (memo built in) |
+| `useState` + `useEffect` hydration flag | built in via `useSyncExternalStore` (mismatch-proof) |
+| `isLoading = !hydrated \|\| query.isLoading` | pass `isLoading`; hydration is folded in |
+| `new RegExp('^' + obj.replace('*', '.*') + '$')` | `byPattern(globMatch)` (tested; no first-`*`-only bug) |
+| coupled to a specific data hook | pass `permissions` + `isLoading` from any source |
+
+> **Note**\
+> `createAuthorizer`'s factory re-runs on every check, so the hook memoizes the authorizer on the
+> `permissions` reference. Pass the upstream data reference directly and memoize any reshape on the
+> source (not inline in render), or the authorizer rebuilds every render.
+
+#### Async permissions
+
+The Promise-based mode of `createAuthorizer` is **not** for React (it can't notify React of resolution). Resolve the promise in your data layer (react-query/SWR/`useState`) and feed the resolved value into `useAuthorizer`.
+
 # Why
 
 Casbin is amazing for dynamic and polymorphic control of user access. But the official client-side library left a lot to be desired. Being a de-facto extension on the `casbin-core` package for Node.js, it brings in a lot of unneeded dependencies and wraps them in an API that is awkward to use in a modern JS ecosystem.
@@ -454,7 +548,7 @@ Casbin is amazing for dynamic and polymorphic control of user access. But the of
 - [x] Reliable error reporting (via the `onError` reporter)
 - [x] Transitive RBAC role inheritance (`g(alice, admin)` + `g(admin, super)` ⇒ `g(alice, super)`)
 - [x] [Policy effects](https://casbin.org/docs/syntax-for-models#policy-effect) (allow / deny-override)
-- [ ] Integrations for popular frontend frameworks
+- [x] React integration (`casbin-client/react`); other frameworks to come
 - [ ] Generate ambient types from policy csv or permissions json
 - [ ] Parse permissions at the type level from policy source
 - [x] Support for complex pattern-matching (`/data/*`, `keyMatch(...)`)

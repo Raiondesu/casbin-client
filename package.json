@@ -20,12 +20,24 @@
   },
   "module": "dist/index.js",
   "devDependencies": {
+    "@happy-dom/global-registrator": "^20.10.6",
+    "@testing-library/react": "^16.3.2",
     "@types/bun": "latest",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "badge-maker": "^5.0.2",
-    "coverage-percentage": "^0.0.2"
+    "coverage-percentage": "^0.0.2",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5",
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   },
   "exports": {
     ".": {
@@ -58,6 +70,11 @@
       "module-sync": "./dist/functions.js",
       "import": "./dist/functions.js"
     },
+    "./react": {
+      "types": "./src/react.ts",
+      "module-sync": "./dist/react.js",
+      "import": "./dist/react.js"
+    },
     "./min": {
       "types": "./src/index.ts",
       "module-sync": "./dist/min/index.js",
@@ -87,6 +104,11 @@
       "types": "./src/functions.ts",
       "module-sync": "./dist/min/functions.js",
       "import": "./dist/min/functions.js"
+    },
+    "./min/react": {
+      "types": "./src/react.ts",
+      "module-sync": "./dist/min/react.js",
+      "import": "./dist/min/react.js"
     }
   },
   "keywords": [

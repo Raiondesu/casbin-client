@@ -17,6 +17,7 @@ try {
   const full = await Bun.build({
     entrypoints: src,
     outdir: 'dist',
+    root: 'src',
 
     minify: false,
     splitting: false,
@@ -28,16 +29,24 @@ try {
   const minified = await Bun.build({
     entrypoints: src,
     outdir: 'dist/min',
+    root: 'src',
 
     emitDCEAnnotations: true,
     minify: true,
     splitting: false,
+    // react is a peer dependency — never inline it (the full build externalises all packages).
+    external: ['react', 'react-dom'],
     naming: { entry: '[dir]/[name].[ext]' },
   });
 
   complete = true;
 
   await postProcess(minified, 'minified');
+
+  // Bun strips the `'use client'` directive; re-prepend it so RSC / Next.js App Router works.
+  for (const file of ['dist/react.js', 'dist/min/react.js']) {
+    if (existsSync(file)) await Bun.write(file, `"use client";\n${await Bun.file(file).text()}`);
+  }
 
   if (minified.success) {
     const contents = (await Promise.all(
