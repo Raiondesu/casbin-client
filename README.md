@@ -448,6 +448,19 @@ First-class React bindings. `react` is an optional [peer dependency](#install) (
 > **Note**\
 > Three states are kept distinct: **loading** / **allowed** / **denied**. `isLoading` is a separate field, never folded into `can()` - so a pending policy denies by default (secure), and you branch on `isLoading` *first* to show a placeholder instead of a flash of "denied".
 
+#### Server vs. client
+
+`casbin-client/react` is a set of **Client Component** bindings - they use hooks, so the module carries a `'use client'` directive. There are two doors into the library:
+
+- **Server-side authorization** (Server Components, route handlers, middleware, edge, SSR loaders): use the **core** - `import { createAuthorizer } from 'casbin-client'`. It is pure, dependency-free, carries **no** directive, and runs anywhere.
+  ```ts
+  import { createAuthorizer } from 'casbin-client';
+  const { can } = createAuthorizer(() => permissions); // any server or client context
+  ```
+- **Client-component gating** (interactive UI that needs hooks/state): use `casbin-client/react`.
+
+You cannot use these hooks inside a pure Server Component - but that is what the `core` is for.
+
 #### The headless hook
 
 `useAuthorizer(permissions, options?)` needs no Provider - the truest drop-in:
