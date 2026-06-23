@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { authorizer } from '../src/core';
+import { authorizer, type Permissions } from '../src/core';
 import { byPattern, globMatch, keyMatch, keyMatch2, regexMatch } from '../src/functions';
 import { parseExpression } from '../src/parser';
 import { fromPolicySource } from '../src/policy';
@@ -34,7 +34,8 @@ describe('Built-in matcher functions', () => {
 
 describe('Pattern matching at check time (byPattern)', () => {
   test('a stored `/data/*` matches a concrete path', () => {
-    const can = authorizer(() => ({ read: ['/data/*'], write: ['/admin'] }), {
+    // pattern-based permissions: objects are concrete paths (string) checked against stored patterns
+    const can = authorizer<Permissions<'read' | 'write', string>>(() => ({ read: ['/data/*'], write: ['/admin'] }), {
       matchObject: byPattern(keyMatch),
     });
 

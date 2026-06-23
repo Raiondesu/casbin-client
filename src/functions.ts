@@ -3,7 +3,7 @@
 // any of them into a `matchObject` so a stored pattern like `/data/*` matches a concrete
 // `/data/123` at check time. See https://casbin.org/docs/function
 
-import type { MatchObject } from './core.js';
+import type { MatchObject, Permissions } from './core.js';
 
 /** `key2` may end in `*`, which matches the trailing part of `key1` (crosses `/`). */
 export function keyMatch(key1: string, key2: string): boolean {
@@ -41,5 +41,7 @@ export const builtinFunctions = { keyMatch, keyMatch2, regexMatch, globMatch };
  * of the stored patterns. Lets the authorizer treat permissions like `{ read: ['/data/*'] }`
  * as patterns at check time, e.g. `authorizer(() => perms, { matchObject: byPattern(keyMatch) })`.
  */
-export const byPattern = (match: (object: string, pattern: string) => boolean): MatchObject =>
-  (object, source) => source?.some(pattern => match(object, pattern)) ?? false;
+export const byPattern = <P extends Permissions = Permissions>(
+  match: (object: string, pattern: string) => boolean,
+): MatchObject<P> =>
+  (object, source) => source?.some(pattern => match(object as string, pattern as string)) ?? false;
