@@ -1,4 +1,4 @@
-import { authorizer, type AuthorizerOptions, type Can, type Permissions } from "./core";
+import { authorizer, type AuthorizerOptions, type Can, type Permissions } from "./core.js";
 
 /**
  * Options for an async authorizer that allow using an async storage
@@ -68,7 +68,8 @@ export function createAuthorizer<const P extends Permissions>(
   options: PersistAuthorizerOptions<P> | AsyncAuthorizerOptions<P> = {},
 ): AsyncAuthorizer<P> | Authorizer<P> {
   const {
-    store = globalThis.sessionStorage ?? {},
+    store = (globalThis as { sessionStorage?: WebStorage }).sessionStorage
+      ?? { getItem: () => null, setItem: () => {} },
     key = 'auth',
     fallback = () => false,
     matchAction,

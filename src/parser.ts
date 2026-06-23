@@ -1,3 +1,4 @@
+/// <reference path="./subscript.d.ts" />
 // Built on subscript's sandboxed evaluator: matcher/effect expressions cannot reach the
 // `Function` constructor, prototypes, or JS globals, so they cannot execute arbitrary code.
 // We compose the base preset with just the features Casbin matchers need (literals, `in`,
@@ -13,7 +14,7 @@ import 'subscript/feature/op/ternary.js';     // a ? b : c (parse)
 import 'subscript/eval/op/ternary.js';        // ternary (eval)
 import { compile, operator, parse } from 'subscript/parse';
 
-import type { ExpressionParser, Matcher, PolicyEffect } from './types';
+import type { ExpressionParser, Matcher, PolicyEffect } from './types.js';
 
 // Casbin allows single-quoted strings.
 parse.string["'"] = true;

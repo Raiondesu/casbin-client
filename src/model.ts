@@ -1,4 +1,4 @@
-import type { DefinitionKey, ErrorReporter, ExpressionParser, Matcher, Model, ModelContext, ModelEffect, ModelRecord, PolicyDefinition, PolicyEffect, RequestDefinition, RoleDefinition } from "./types";
+import type { DefinitionKey, ErrorReporter, ExpressionParser, Matcher, Model, ModelContext, ModelEffect, ModelRecord, PolicyDefinition, PolicyEffect, RequestDefinition, RoleDefinition } from "./types.js";
 
 export type { Matcher, Model, PolicyEffect, PolicyDefinition, RequestDefinition, ModelContext, ModelEffect, ModelRecord, RoleDefinition, DefinitionKey };
 
@@ -58,7 +58,8 @@ export function parseModel(source: string, options?: ModelParserOptions) {
 const comma = /,\s*/;
 const header = /^\[(\w+)\]$/;
 
-function* parseStructure(source: string): Generator<ModelIR> {
+function parseStructure(source: string): ModelIR[] {
+  const sections: ModelIR[] = [];
   let section: keyof Model | undefined;
   let statements: string[] = [];
 
@@ -71,7 +72,7 @@ function* parseStructure(source: string): Generator<ModelIR> {
     // (e.g. an array literal) is kept as part of the statement instead of truncating it.
     const match = header.exec(line);
     if (match) {
-      if (section) yield [section, statements];
+      if (section) sections.push([section, statements]);
       section = toCamelCaseSimple(match[1]) as keyof Model;
       statements = [];
     } else if (section) {
@@ -79,7 +80,8 @@ function* parseStructure(source: string): Generator<ModelIR> {
     }
   }
 
-  if (section) yield [section, statements];
+  if (section) sections.push([section, statements]);
+  return sections;
 }
 
 function toCamelCaseSimple(snakeStr: string) {

@@ -1,4 +1,4 @@
-import type { ErrorReporter } from './types';
+import type { ErrorReporter } from './types.js';
 
 export type MatchAction<P extends Permissions = Permissions> = (
   action: keyof P,

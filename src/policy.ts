@@ -1,6 +1,6 @@
-import type { Permissions } from "./core";
-import { parseModel, type ModelParserOptions, type ModelContext } from "./model";
-import type { DefinitionKey, ErrorReporter, Model, ModelRecord, PolicyDefinition, RoleContext, RoleDefinitions } from "./types";
+import type { Permissions } from "./core.js";
+import { parseModel, type ModelParserOptions, type ModelContext } from "./model.js";
+import type { DefinitionKey, ErrorReporter, Model, ModelRecord, PolicyDefinition, RoleContext, RoleDefinitions } from "./types.js";
 
 export interface PolicySource {
   m: string;

@@ -39,7 +39,8 @@ function parseModel(source, options) {
 }
 var comma = /,\s*/;
 var header = /^\[(\w+)\]$/;
-function* parseStructure(source) {
+function parseStructure(source) {
+  const sections = [];
   let section;
   let statements = [];
   for (const raw of source.replace(/\r\n?/g, `
@@ -51,7 +52,7 @@ function* parseStructure(source) {
     const match = header.exec(line);
     if (match) {
       if (section)
-        yield [section, statements];
+        sections.push([section, statements]);
       section = toCamelCaseSimple(match[1]);
       statements = [];
     } else if (section) {
@@ -59,7 +60,8 @@ function* parseStructure(source) {
     }
   }
   if (section)
-    yield [section, statements];
+    sections.push([section, statements]);
+  return sections;
 }
 function toCamelCaseSimple(snakeStr) {
   return snakeStr.replace(/_([a-z])/g, (_, $1) => $1.toUpperCase());

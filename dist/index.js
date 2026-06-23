@@ -13,7 +13,7 @@ function authorizer(permissions, options) {
 // src/index.ts
 function createAuthorizer(getPermissions, options = {}) {
   const {
-    store = globalThis.sessionStorage ?? {},
+    store = globalThis.sessionStorage ?? { getItem: () => null, setItem: () => {} },
     key = "auth",
     fallback = () => false,
     matchAction,
