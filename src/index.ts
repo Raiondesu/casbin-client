@@ -77,11 +77,21 @@ export function createAuthorizer<const P extends Permissions>(
     onError
   } = options;
 
+  // Cache-write de-dup: an authorization check shouldn't pay a serialize + storage write
+  // every call - only persist when the cached value actually changes.
+  let lastRef: unknown;
+  let lastWritten: string | undefined;
+
   const captureAuthorizer = (permissions: () => P | null | undefined, remote?: Promise<P>) => {
-    const p = { permissions: null as ReturnType<typeof permissions> };
+    // Seed last-known permissions from the cache ONCE (cold start); the store is no longer
+    // read on the hot path.
+    const cached = getStore();
+    const p = { permissions: (cached instanceof Promise ? null : cached) as ReturnType<typeof permissions> };
+    if (cached instanceof Promise) cached.then(c => { p.permissions ??= c; }).catch(() => {});
+
     const get = () => {
-      const local = getStore();
-      updateStore(p.permissions = permissions() ?? p.permissions ?? (local instanceof Promise ? null : local));
+      p.permissions = permissions() ?? p.permissions;
+      updateStore(p.permissions); // change-guarded: writes only when the value changed
       return p.permissions;
     };
 
@@ -124,10 +134,17 @@ export function createAuthorizer<const P extends Permissions>(
   return captureAuthorizer(() => resolved.permissions, updater);
 
   async function updateStore(permissions?: P | null) {
+    // Skip when nothing changed - same reference (memoized factory), or same serialized
+    // form - so repeated checks don't repeatedly hit storage.
+    if (permissions === lastRef) return;
+    lastRef = permissions;
+    // Coerce undefined -> null so we never persist the string "undefined",
+    // which would throw on the next read.
+    const serialized = JSON.stringify(permissions ?? null);
+    if (serialized === lastWritten) return;
+    lastWritten = serialized;
     try {
-      // Coerce undefined -> null so we never persist the string "undefined",
-      // which would throw on the next read.
-      await store.setItem?.(key, JSON.stringify(permissions ?? null));
+      await store.setItem?.(key, serialized);
     } catch (error) {
       onError?.(error, 'createAuthorizer.updateStore');
     }
@@ -144,7 +161,7 @@ export function createAuthorizer<const P extends Permissions>(
     try {
       return JSON.parse(raw ?? 'null') as P;
     } catch (error) {
-      // A corrupt cache entry must never throw at a permission check — degrade to "no cache".
+      // A corrupt cache entry must never throw at a permission check - degrade to "no cache".
       onError?.(error, 'createAuthorizer.getStore');
       return null;
     }

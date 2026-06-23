@@ -1,20 +1,30 @@
+import 'subscript/feature/literal.js';
+import 'subscript/feature/op/membership.js';
+import 'subscript/eval/op/membership.js';
+import 'subscript/feature/collection.js';
+import 'subscript/eval/collection.js';
+import 'subscript/feature/op/ternary.js';
+import 'subscript/eval/op/ternary.js';
+
 /// <reference path="./subscript.d.ts" />
 // Built on subscript's sandboxed evaluator: matcher/effect expressions cannot reach the
 // `Function` constructor, prototypes, or JS globals, so they cannot execute arbitrary code.
 // We compose the base preset with just the features Casbin matchers need (literals, `in`,
-// array/object literals, ternary) — skipping justin's arrows/spread/templates/optional —
+// array/object literals, ternary) - skipping justin's arrows/spread/templates/optional -
 // then add Casbin's `in` array-membership semantics. See https://github.com/dy/subscript
 import subscript from 'subscript';
-import 'subscript/feature/literal.js';        // true / false / null / undefined / NaN / Infinity
-import 'subscript/feature/op/membership.js';  // `in` (parse)
-import 'subscript/eval/op/membership.js';     // `in` (eval)
-import 'subscript/feature/collection.js';     // [a, b] and { a: b } literals (parse)
-import 'subscript/eval/collection.js';        // collection literals (eval)
-import 'subscript/feature/op/ternary.js';     // a ? b : c (parse)
-import 'subscript/eval/op/ternary.js';        // ternary (eval)
 import { compile, operator, parse } from 'subscript/parse';
 
 import type { ExpressionParser, Matcher, PolicyEffect } from './types.js';
+
+// true / false / null / undefined / NaN / Infinity
+ // `in` (parse)
+    // `in` (eval)
+    // [a, b] and { a: b } literals (parse)
+       // collection literals (eval)
+    // a ? b : c (parse)
+       // ternary (eval)
+
 
 // Casbin allows single-quoted strings.
 parse.string["'"] = true;

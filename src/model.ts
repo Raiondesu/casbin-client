@@ -68,7 +68,7 @@ function parseStructure(source: string): ModelIR[] {
     const line = raw.replace(/#.*$/, '').trim(); // drop `# comments` and surrounding space
     if (!line) continue;
 
-    // A header is a WHOLE line like `[matchers]` — so a `[` inside a matcher body
+    // A header is a WHOLE line like `[matchers]` - so a `[` inside a matcher body
     // (e.g. an array literal) is kept as part of the statement instead of truncating it.
     const match = header.exec(line);
     if (match) {

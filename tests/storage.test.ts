@@ -27,6 +27,26 @@ describe('Storage edges', () => {
     expect(reported).toContain('createAuthorizer.getStore');
   });
 
+  test('repeated checks do not re-hit storage on the hot path', () => {
+    let reads = 0, writes = 0;
+    const store = {
+      getItem: (_k: string) => { reads++; return null; },
+      setItem: (_k: string, _v: string) => { writes++; },
+    } satisfies WebStorage;
+
+    const perms = { read: ['data'], write: ['data'] };
+    const auth = createAuthorizer<Permissions>(() => perms, { store });
+
+    auth.can('read', 'data');
+    auth.can('write', 'data');
+    auth.can(['read', 'write'], ['data']); // fans out to several internal checks
+    auth.can('read', 'data');
+
+    // the store is seeded once and written at most once - not once per check.
+    expect(reads).toBeLessThanOrEqual(1);
+    expect(writes).toBeLessThanOrEqual(1);
+  });
+
   test('a valid cache is read back', () => {
     const store = memoryStore({ auth: JSON.stringify({ read: ['data'] }) });
     const auth = createAuthorizer<Permissions>(() => null, { store });

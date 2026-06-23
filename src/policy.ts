@@ -29,7 +29,7 @@ export function fromPolicySource<P extends Permissions>(
 
   // Filtering by request needs a real matcher. Without `parseExpression` the default
   // naive parser matches everything, which would silently grant ALL policies to the
-  // subject — so we report and fail closed (deny) instead of failing open.
+  // subject - so we report and fail closed (deny) instead of failing open.
   if (request && !parseExpression) {
     onError?.(
       new Error('`request` filtering requires `parseExpression`; denying to fail closed'),
@@ -104,7 +104,7 @@ export function fromCustomModel<P extends Permissions>(
     matched.push({ key, obj, deny: policyContext.eft === 'deny' });
   }
 
-  // Allow rows grant; matching deny rows (eft == 'deny') override them — a fail-safe
+  // Allow rows grant; matching deny rows (eft == 'deny') override them - a fail-safe
   // deny-override that also stops deny rows from being added as permissions. Deduped.
   const denied = new Set(
     matched.filter(m => m.deny).map(m => `${m.key} ${m.obj}`),
@@ -149,7 +149,7 @@ export function createRoleContext(roleModel: RoleDefinitions, roleGroups?: strin
  * Transitive role check with a cycle guard. `args` is `[subject, role, ...domain]` and
  * each edge is `[child, parent, ...domain]`; a role is reachable through intermediate
  * roles as long as any trailing (domain) arguments match at every hop. This implements
- * Casbin's role inheritance — `g(alice, admin)` + `g(admin, super)` ⇒ `g(alice, super)` —
+ * Casbin's role inheritance - `g(alice, admin)` + `g(admin, super)` ⇒ `g(alice, super)` -
  * instead of a single direct-edge lookup.
  */
 function hasRole(edges: string[][], args: string[]): boolean {

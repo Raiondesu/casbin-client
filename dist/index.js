@@ -20,11 +20,18 @@ function createAuthorizer(getPermissions, options = {}) {
     matchObject,
     onError
   } = options;
+  let lastRef;
+  let lastWritten;
   const captureAuthorizer = (permissions, remote2) => {
-    const p = { permissions: null };
+    const cached = getStore();
+    const p = { permissions: cached instanceof Promise ? null : cached };
+    if (cached instanceof Promise)
+      cached.then((c) => {
+        p.permissions ??= c;
+      }).catch(() => {});
     const get = () => {
-      const local = getStore();
-      updateStore(p.permissions = permissions() ?? p.permissions ?? (local instanceof Promise ? null : local));
+      p.permissions = permissions() ?? p.permissions;
+      updateStore(p.permissions);
       return p.permissions;
     };
     const can = authorizer(get, { fallback, matchAction, matchObject, onError });
@@ -57,8 +64,15 @@ function createAuthorizer(getPermissions, options = {}) {
   updater.catch(() => {});
   return captureAuthorizer(() => resolved.permissions, updater);
   async function updateStore(permissions) {
+    if (permissions === lastRef)
+      return;
+    lastRef = permissions;
+    const serialized = JSON.stringify(permissions ?? null);
+    if (serialized === lastWritten)
+      return;
+    lastWritten = serialized;
     try {
-      await store.setItem?.(key, JSON.stringify(permissions ?? null));
+      await store.setItem?.(key, serialized);
     } catch (error) {
       onError?.(error, "createAuthorizer.updateStore");
     }
