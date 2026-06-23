@@ -71,4 +71,16 @@ describe('Model parser', () => {
       ...parsed.policyEffect
     })).toBeTrue();
   });
+
+  test('a matcher that fails to parse is reported, not thrown', () => {
+    const reported: string[] = [];
+
+    const parsed = parseModel('[matchers]\nm = (\n', {
+      parseExpression,
+      onError: (_e, ctx) => reported.push(ctx),
+    });
+
+    expect(reported.some(c => c.startsWith('model.matchers'))).toBeTrue();
+    expect(parsed.matchers.m).toBeUndefined(); // the bad matcher was skipped, not stored
+  });
 });

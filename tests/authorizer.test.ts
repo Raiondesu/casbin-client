@@ -62,6 +62,20 @@ describe('Simple authorizer', () => {
 
     // Non-empty arrays keep their AND semantics.
     expect(can(['read'], ['data'])).toBeTrue();
+
+    // an unknown action falls through to the default fallback (deny)
+    expect(can('nope', 'data')).toBeFalse();
+  });
+
+  test('a custom fallback decides only unknown actions', () => {
+    const can = authorizer<Permissions>(() => ({ read: ['data'] }), {
+      fallback: (action) => action === 'admin',
+    });
+
+    expect(can('admin', 'anything')).toBeTrue();  // unknown action -> fallback true
+    expect(can('write', 'anything')).toBeFalse(); // unknown action -> fallback false
+    expect(can('read', 'data')).toBeTrue();       // known -> matched
+    expect(can('read', 'other')).toBeFalse();     // known action, absent object -> deny (not fallback)
   });
 });
 

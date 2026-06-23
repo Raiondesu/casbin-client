@@ -28,7 +28,7 @@ function createAuthorizer(getPermissions, options = {}) {
     if (cached instanceof Promise)
       cached.then((c) => {
         p.permissions ??= c;
-      }).catch(() => {});
+      });
     const get = () => {
       p.permissions = permissions() ?? p.permissions;
       updateStore(p.permissions);
@@ -56,7 +56,7 @@ function createAuthorizer(getPermissions, options = {}) {
   const resolved = { permissions: null };
   Promise.resolve(getStore()).then((cached) => {
     resolved.permissions ??= cached;
-  }).catch(() => {});
+  });
   const updater = remote.then(async (p) => {
     await updateStore(resolved.permissions = p);
     return p;
@@ -81,7 +81,10 @@ function createAuthorizer(getPermissions, options = {}) {
     const item = store.getItem?.(key);
     if (!(item instanceof Promise))
       return safeParse(item);
-    return item.then(safeParse);
+    return item.then(safeParse, (error) => {
+      onError?.(error, "createAuthorizer.getStore");
+      return null;
+    });
   }
   function safeParse(raw) {
     try {

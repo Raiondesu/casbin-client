@@ -46,6 +46,15 @@ describe('Transitive RBAC', () => {
     expect(ctx.g('alice', 'nobody')).toBeFalse();
   });
 
+  test('domain-scoped roles only match within their domain', () => {
+    const ctx = createRoleContext({ g: ['_', '_', '_'] }, [
+      ['g', 'alice', 'admin', 'domain1'],
+    ])!;
+
+    expect(ctx.g('alice', 'admin', 'domain1')).toBeTrue();
+    expect(ctx.g('alice', 'admin', 'domain2')).toBeFalse(); // right roles, wrong domain
+  });
+
   test('cycles do not hang', () => {
     const ctx = createRoleContext({ g: ['_', '_'] }, [
       ['g', 'a', 'b'],

@@ -87,7 +87,7 @@ export function createAuthorizer<const P extends Permissions>(
     // read on the hot path.
     const cached = getStore();
     const p = { permissions: (cached instanceof Promise ? null : cached) as ReturnType<typeof permissions> };
-    if (cached instanceof Promise) cached.then(c => { p.permissions ??= c; }).catch(() => {});
+    if (cached instanceof Promise) cached.then(c => { p.permissions ??= c; });
 
     const get = () => {
       p.permissions = permissions() ?? p.permissions;
@@ -120,9 +120,7 @@ export function createAuthorizer<const P extends Permissions>(
   const resolved = { permissions: null as P | null | undefined };
 
   // Seed from cache (sync or async) but never override a remote that already arrived.
-  Promise.resolve(getStore())
-    .then(cached => { resolved.permissions ??= cached; })
-    .catch(() => {});
+  Promise.resolve(getStore()).then(cached => { resolved.permissions ??= cached; });
 
   // Remote always wins once it resolves; on failure we keep whatever the cache seeded.
   const updater = remote.then(async p => {
@@ -154,7 +152,11 @@ export function createAuthorizer<const P extends Permissions>(
     const item = store.getItem?.(key);
     if (!(item instanceof Promise)) return safeParse(item);
 
-    return item.then(safeParse);
+    // An async store that rejects on read must not crash a check — degrade to "no cache".
+    return item.then(safeParse, error => {
+      onError?.(error, 'createAuthorizer.getStore');
+      return null;
+    });
   }
 
   function safeParse(raw?: string | null): P | null {

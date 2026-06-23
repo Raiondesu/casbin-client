@@ -460,7 +460,7 @@ Casbin is amazing for dynamic and polymorphic control of user access. But the of
 - [x] Support for complex pattern-matching (`/data/*`, `keyMatch(...)`)
 - [ ] Support for internal `eval(...)` and other built-in functions
 - [ ] Support for custom matcher contexts
-- [ ] Full test coverage
+- [x] Full test coverage
 
 Feel like something's missing? [Submit an issue](issues/new)!\
 Wanna help? [Fork and submit a PR](fork)!
