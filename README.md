@@ -101,13 +101,14 @@ And that's the basics!
 
 ## Modules
 
-There are 5 isolated modules:
+There are 6 isolated modules:
 
 - [`casbin-client/core`](#authorizer) - the tiny "core" of the package with a single purpose - to create an authorizer
 - [`casbin-client`](#createauthorizer) - exports a multi-purpose factory for advanced uses
 - [`casbin-client/model`](#casbin-clientmodel) - parser for [Casbin models](https://casbin.org/docs/syntax-for-models)
 - [`casbin-client/policy`](#casbin-clientpolicy) - parser for [Casbin policies](https://casbin.org/docs/policy-storage)
 - [`casbin-client/parser`](#casbin-clientparser) - parser for [Casbin expressions](https://casbin.org/docs/syntax-for-models#matchers)
+- [`casbin-client/functions`](#casbin-clientfunctions) - built-in pattern matchers (`keyMatch`, `globMatch`, …)
 
 Each module is independent from others, and thus very has little effect on the final bundle size of your application.
 
@@ -402,6 +403,43 @@ if (bob.can.read('data')) {
 }
 ```
 
+### `casbin-client/functions`
+
+Casbin's built-in pattern matchers - `keyMatch`, `keyMatch2`, `regexMatch`, `globMatch` - for path-style resources like `/data/*`.
+
+They are available **by default inside policy matchers**, so a model can use them as-is:
+
+```ts
+const model = `
+  [request_definition]
+  r = sub, obj, act
+  [policy_definition]
+  p = sub, obj, act
+  [matchers]
+  m = r.sub == p.sub && keyMatch(r.obj, p.obj) && r.act == p.act
+`;
+```
+
+For the common frontend case - holding permissions that contain patterns and checking concrete paths against them - use `byPattern` to turn any matcher into a `matchObject`:
+
+```ts
+import { authorizer } from 'casbin-client/core';
+import { byPattern, keyMatch } from 'casbin-client/functions';
+
+const can = authorizer(() => ({ read: ['/data/*'] }), {
+  matchObject: byPattern(keyMatch),
+});
+
+can('read', '/data/123'); //> true
+can('read', '/other');    //> false
+```
+
+You can supply or override functions via the `functions` option of `fromPolicySource`:
+
+```ts
+fromPolicySource(policy, { request: ['r', 'alice'], parseExpression, functions: { keyMatch: myKeyMatch } });
+```
+
 # Why
 
 Casbin is amazing for dynamic and polymorphic control of user access. But the official client-side library left a lot to be desired. Being a de-facto extension on the `casbin-core` package for Node.js, it brings in a lot of unneeded dependencies and wraps them in an API that is awkward to use in a modern JS ecosystem.
@@ -419,7 +457,7 @@ Casbin is amazing for dynamic and polymorphic control of user access. But the of
 - [ ] Integrations for popular frontend frameworks
 - [ ] Generate ambient types from policy csv or permissions json
 - [ ] Parse permissions at the type level from policy source
-- [ ] Support for complex pattern-matching (`/data/*`, `keyMatch(...)`)
+- [x] Support for complex pattern-matching (`/data/*`, `keyMatch(...)`)
 - [ ] Support for internal `eval(...)` and other built-in functions
 - [ ] Support for custom matcher contexts
 - [ ] Full test coverage

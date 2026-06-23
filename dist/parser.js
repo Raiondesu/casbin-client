@@ -1,5 +1,4 @@
 // src/parser.ts
-import subscript from "subscript";
 import"subscript/feature/literal.js";
 import"subscript/feature/op/membership.js";
 import"subscript/eval/op/membership.js";
@@ -7,6 +6,7 @@ import"subscript/feature/collection.js";
 import"subscript/eval/collection.js";
 import"subscript/feature/op/ternary.js";
 import"subscript/eval/op/ternary.js";
+import subscript from "subscript";
 import { compile, operator, parse } from "subscript/parse";
 parse.string["'"] = true;
 operator("in", (a, b) => b && (a = compile(a), b = compile(b), (ctx) => {

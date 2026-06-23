@@ -1,6 +1,7 @@
 import type { Permissions } from "./core.js";
 import { parseModel, type ModelParserOptions, type ModelContext } from "./model.js";
 import type { DefinitionKey, ErrorReporter, Model, ModelRecord, PolicyDefinition, RoleContext, RoleDefinitions } from "./types.js";
+import { builtinFunctions } from "./functions.js";
 
 export interface PolicySource {
   m: string;
@@ -14,6 +15,9 @@ export interface PolicyParserOptions {
 
   /** Reports a recoverable error; request filtering fails closed (denies) after reporting. */
   onError?: ErrorReporter;
+
+  /** Extra matcher functions, merged over the built-ins (`keyMatch`, `regexMatch`, …). */
+  functions?: Record<string, (...args: any[]) => unknown>;
 }
 
 export const defaultPermissionModel = ['act', 'obj'];
@@ -23,7 +27,7 @@ export function fromPolicySource<P extends Permissions>(
   options?: PolicyParserOptions & ModelParserOptions
 ): P {
   const {
-    request, parseExpression, onError,
+    request, parseExpression, onError, functions,
     permissionModel = defaultPermissionModel
   } = options ?? {};
 
@@ -40,7 +44,7 @@ export function fromPolicySource<P extends Permissions>(
 
   const model = parseModel(source.m, { parseExpression, onError });
 
-  return fromCustomModel<P>(model, source, { request, permissionModel, onError });
+  return fromCustomModel<P>(model, source, { request, permissionModel, onError, functions });
 }
 
 export function fromCustomModel<P extends Permissions>(
@@ -51,7 +55,8 @@ export function fromCustomModel<P extends Permissions>(
   const {
     request: presetRequest,
     permissionModel = defaultPermissionModel,
-    onError
+    onError,
+    functions
   } = options ?? {};
   const [requestGroup, ...request] = presetRequest ?? ['r'];
   const requestType = getSectionType(requestGroup);
@@ -84,9 +89,11 @@ export function fromCustomModel<P extends Permissions>(
         [requestGroup]: toModelContext(def, request, policyContext),
         [policyGroup]: policyContext,
         ...groups,
+        ...builtinFunctions,
+        ...functions,
         ...model.matchers,
         ...model.policyEffect,
-      } as ModelContext;
+      } as unknown as ModelContext;
 
       if (!matcher!(context)) continue;
     }

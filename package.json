@@ -53,6 +53,11 @@
       "module-sync": "./dist/parser.js",
       "import": "./dist/parser.js"
     },
+    "./functions": {
+      "types": "./src/functions.ts",
+      "module-sync": "./dist/functions.js",
+      "import": "./dist/functions.js"
+    },
     "./min": {
       "types": "./src/index.ts",
       "module-sync": "./dist/min/index.js",
@@ -77,6 +82,11 @@
       "types": "./src/parser.ts",
       "module-sync": "./dist/min/parser.js",
       "import": "./dist/min/parser.js"
+    },
+    "./min/functions": {
+      "types": "./src/functions.ts",
+      "module-sync": "./dist/min/functions.js",
+      "import": "./dist/min/functions.js"
     }
   },
   "keywords": [
